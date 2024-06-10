@@ -54,6 +54,8 @@ def render_basic_calibration():
                         "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
 
     # User inputs
+    x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
+    y_label = st.text_input("Enter the label for y", "Peakarea")
     x_input = st.text_area("Enter x values (comma separated)", default_x_values)
     y_input = st.text_area("Enter y values (comma separated)", default_y_values)
     
@@ -82,8 +84,8 @@ def render_basic_calibration():
             fig, ax = plt.subplots()
             ax.plot(df['x'], df['y'], 'o', label='Data points')
             ax.plot(df['x'], y_pred, '-', label='Regression line')
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label)
             ax.legend()
             
             # Display the plot in Streamlit
@@ -94,7 +96,7 @@ def render_basic_calibration():
 
             # Show formula of fitted linear regression
             st.markdown("**Formula of fitted linear regression:**")
-            st.write(f"y = {model.coef_[0]} * x + {model.intercept_}")
+            st.write(f"{y_label} = {model.coef_[0]} * {x_label} + {model.intercept_}")
 
             # Show slope of the fitted regression line
             st.markdown("**Slope of the fitted regression line:**")
@@ -138,9 +140,9 @@ def render_basic_calibration():
             fig_resid, ax_resid = plt.subplots()
             ax_resid.scatter(df['x'], residuals)
             ax_resid.axhline(y=0, color='black', linestyle='--')
-            ax_resid.set_xlabel('x')
+            ax_resid.set_xlabel(x_label)
             ax_resid.set_ylabel('Residuals')
-            ax_resid.set_title("Residuals vs x")
+            ax_resid.set_title(f"Residuals vs {x_label}")
             st.pyplot(fig_resid)
             
             # Calculate standardized residuals
@@ -149,9 +151,9 @@ def render_basic_calibration():
             # square root of the absolute value of standardized residuals vs x plot
             fig_sqrt_std_res, ax_sqrt_std_res = plt.subplots()
             ax_sqrt_std_res.scatter(df['x'], np.sqrt(np.abs(standardized_residuals)))
-            ax_sqrt_std_res.set_xlabel('x')
+            ax_sqrt_std_res.set_xlabel(x_label)
             ax_sqrt_std_res.set_ylabel('sqrt(|Standardized Residuals|)')
-            ax_sqrt_std_res.set_title("sqrt(|Standardized Residuals|) vs x")
+            ax_sqrt_std_res.set_title(f"sqrt(|Standardized Residuals|) vs {x_label}")
             st.pyplot(fig_sqrt_std_res)
 
             # Calculate relative error
@@ -162,14 +164,14 @@ def render_basic_calibration():
             fig_rel_error, ax_rel_error = plt.subplots()
             ax_rel_error.scatter(df['x'], relative_error)
             ax_rel_error.axhline(y=0, color='black', linestyle='--')
-            ax_rel_error.set_xlabel('x')
+            ax_rel_error.set_xlabel(x_label)
             ax_rel_error.set_ylabel('Relative Error')
-            ax_rel_error.set_title("Relative Error vs x")
+            ax_rel_error.set_title(f"Relative Error vs {x_label}")
             st.pyplot(fig_rel_error)
 
             # Model assumptions - Normality of Residuals
             st.subheader("Model assumptions - Normality of Residuals")
-            st.markdown("***Quantile-Quantile Plot***")
+            st.markdown("**Quantile-Quantile Plot**")
 
             # Generate QQ plot
             fig_qq, ax_qq = plt.subplots()
@@ -182,6 +184,7 @@ def render_basic_calibration():
 
         else:
             st.error("The number of x values must be equal to the number of y values.")
+
 
 
 ###############################################################
