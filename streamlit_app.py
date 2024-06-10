@@ -9,6 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
+
 ###############################################################
 # Define page titles
 ###############################################################
@@ -45,10 +46,23 @@ def render_basic_calibration():
         
         # Check if both lists have the same length
         if len(x_values) == len(y_values):
+
             # Create a dataframe
             data = {'x': x_values, 'y': y_values}
             df = pd.DataFrame(data)
-            st.dataframe(df)            
+            st.dataframe(df)  
+
+            # Create scatterplot 
+            fig, ax = plt.subplots()
+            ax.plot(df['x'], df['y'], 'o')
+            ax.set_xlabel('Nominal values')
+            ax.set_ylabel('Signal')
+            ax.set_title("Ordinary Least Square Calibration")
+
+            # Display the plot
+            st.pyplot(fig)
+
+            plt.plot(df.x,df.y,'o')          
         else:
             st.error("The number of x values must be equal to the number of y values.")
 
