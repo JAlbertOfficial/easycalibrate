@@ -79,8 +79,26 @@ def render_basic_calibration():
             
             # Display the plot in Streamlit
             st.pyplot(fig)
+
+            # Display Calibration function section
+            st.subheader("Calibration function")
+
+            # Show formula of fitted linear regression
+            st.markdown("**Formula of fitted linear regression:**")
+            st.write(f"y = {model.coef_[0]} * x + {model.intercept_}")
+
+            # Show slope of the fitted regression line
+            st.markdown("**Slope of the fitted regression line:**")
+            st.write(f"{model.coef_[0]}")
+
+            # Show intercept of the fitted regression line
+            st.markdown("**Intercept of the fitted regression line:**")
+            st.write(f"{model.intercept_}")
+            
         else:
             st.error("The number of x values must be equal to the number of y values.")
+
+
 
 ###############################################################
 # Function to render improved calibration page
@@ -89,6 +107,7 @@ def render_basic_calibration():
 def render_improved_calibration():
     st.header("Improved Calibration Page")
     st.write("This is the Improved Calibration page!")
+
 
 ###############################################################
 # Function to render references page
