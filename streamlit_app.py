@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_squared_error
 import plotly.express as px
 from scipy.interpolate import make_interp_spline
+from scipy.stats import shapiro
 import statsmodels.api as sm
 
 
@@ -168,9 +169,22 @@ def render_basic_calibration():
             ax_rel_error.set_ylabel('Relative Error')
             ax_rel_error.set_title(f"Relative Error vs {x_label}")
             st.pyplot(fig_rel_error)
-
+            
             # Model assumptions - Normality of Residuals
             st.subheader("Model assumptions - Normality of Residuals")
+            st.markdown("**Shapiro-Wilk Test for Normality of Residuals**")
+
+            # Perform Shapiro-Wilk test for normality of residuals
+            _, p_value = shapiro(residuals)
+
+            # Interpret Shapiro-Wilk test results
+            if p_value > 0.05:
+                st.write("The Shapiro-Wilk test for normality of residuals is not significant (p > 0.05), indicating that the residuals are normally distributed.")
+            else:
+                st.write("The Shapiro-Wilk test for normality of residuals is significant (p <= 0.05), suggesting that the residuals may not be normally distributed.")
+                st.write("Considering the non-normal distribution of residuals, weighted calibration may be advisable.")
+                st.write("The distribution of residuals and the test result should be visually verified with the following QQ plot.")
+
             st.markdown("**Quantile-Quantile Plot**")
 
             # Generate QQ plot
