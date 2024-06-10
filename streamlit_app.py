@@ -135,24 +135,23 @@ def render_basic_calibration():
             residuals = y - y_pred
 
             # Residuals vs x plot
-            st.subheader("Residuals vs x")
             fig_resid, ax_resid = plt.subplots()
             ax_resid.scatter(df['x'], residuals)
             ax_resid.axhline(y=0, color='black', linestyle='--')
             ax_resid.set_xlabel('x')
             ax_resid.set_ylabel('Residuals')
+            ax_resid.set_title("Residuals vs x")
             st.pyplot(fig_resid)
             
-
             # Calculate standardized residuals
             standardized_residuals = residuals / np.std(residuals)
 
             # square root of the absolute value of standardized residuals vs x plot
-            st.subheader("Square root of the absolute value of standardized residuals vs x")
             fig_sqrt_std_res, ax_sqrt_std_res = plt.subplots()
             ax_sqrt_std_res.scatter(df['x'], np.sqrt(np.abs(standardized_residuals)))
             ax_sqrt_std_res.set_xlabel('x')
-            ax_sqrt_std_res.set_ylabel('Square root of |Standardized Residuals|')
+            ax_sqrt_std_res.set_ylabel('sqrt(|Standardized Residuals|)')
+            ax_sqrt_std_res.set_title("sqrt(|Standardized Residuals|) vs x")
             st.pyplot(fig_sqrt_std_res)
 
             # Calculate relative error
@@ -160,12 +159,12 @@ def render_basic_calibration():
             relative_error = (x_calc - df['x']) / df['x']
 
             # Relative Error vs x plot
-            st.subheader("Relative Error vs x")
             fig_rel_error, ax_rel_error = plt.subplots()
             ax_rel_error.scatter(df['x'], relative_error)
             ax_rel_error.axhline(y=0, color='black', linestyle='--')
             ax_rel_error.set_xlabel('x')
             ax_rel_error.set_ylabel('Relative Error')
+            ax_rel_error.set_title("Relative Error vs x")
             st.pyplot(fig_rel_error)
 
         else:
