@@ -9,6 +9,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_squared_error
+import plotly.express as px
+from scipy.interpolate import make_interp_spline
+
+
 
 ###############################################################
 # Define page titles
@@ -26,6 +30,10 @@ references = "References"
 def render_home():
     st.header("Home Page")
     st.write("Welcome to the Home page!")
+
+###############################################################
+# Function to render basic calibration page
+###############################################################
 
 ###############################################################
 # Function to render basic calibration page
@@ -108,7 +116,7 @@ def render_basic_calibration():
             st.write(adjusted_r_squared)
 
             # Calculate mean squared errors (MSE)
-            mse = np.mean((y_pred - y) ** 2)
+            mse = mean_squared_error(y, y_pred)
             st.markdown("**Mean Squared Error (MSE)**:")
             st.write(mse)
 
@@ -117,8 +125,52 @@ def render_basic_calibration():
             st.markdown("**Root Mean Squared Error (RMSE)**:")
             st.write(rmse)
 
+            # Display Model assumptions - Homoscedasticity section
+            st.subheader("Model assumptions - Homoscedasticity")
+
+            # Display Residual plots subsection
+            st.markdown("**Residual plots**")
+
+            # Calculate residuals
+            residuals = y - y_pred
+
+            # Residuals vs x plot
+            st.subheader("Residuals vs x")
+            fig_resid, ax_resid = plt.subplots()
+            ax_resid.scatter(df['x'], residuals)
+            ax_resid.axhline(y=0, color='black', linestyle='--')
+            ax_resid.set_xlabel('x')
+            ax_resid.set_ylabel('Residuals')
+            st.pyplot(fig_resid)
+            
+
+            # Calculate standardized residuals
+            standardized_residuals = residuals / np.std(residuals)
+
+            # square root of the absolute value of standardized residuals vs x plot
+            st.subheader("Square root of the absolute value of standardized residuals vs x")
+            fig_sqrt_std_res, ax_sqrt_std_res = plt.subplots()
+            ax_sqrt_std_res.scatter(df['x'], np.sqrt(np.abs(standardized_residuals)))
+            ax_sqrt_std_res.set_xlabel('x')
+            ax_sqrt_std_res.set_ylabel('Square root of |Standardized Residuals|')
+            st.pyplot(fig_sqrt_std_res)
+
+            # Calculate relative error
+            x_calc = (y - model.intercept_) / model.coef_[0]
+            relative_error = (x_calc - df['x']) / df['x']
+
+            # Relative Error vs x plot
+            st.subheader("Relative Error vs x")
+            fig_rel_error, ax_rel_error = plt.subplots()
+            ax_rel_error.scatter(df['x'], relative_error)
+            ax_rel_error.axhline(y=0, color='black', linestyle='--')
+            ax_rel_error.set_xlabel('x')
+            ax_rel_error.set_ylabel('Relative Error')
+            st.pyplot(fig_rel_error)
+
         else:
             st.error("The number of x values must be equal to the number of y values.")
+
 
 ###############################################################
 # Function to render improved calibration page
