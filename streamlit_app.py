@@ -34,8 +34,8 @@ def render_home():
 
 def render_basic_calibration():
     st.subheader("Basic Calibration Page")
-    st.write("This is the Basic Calibration page!")
-    
+    st.markdown("**Import Data**")    
+
     # Default values for x and y
    # Default values for x and y
     default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
@@ -61,6 +61,7 @@ def render_basic_calibration():
             # Create a dataframe
             data = {'x': x_values, 'y': y_values}
             df = pd.DataFrame(data)
+            st.markdown("**View raw data**")
             st.dataframe(df)
             
             # Perform linear regression
@@ -71,12 +72,13 @@ def render_basic_calibration():
             y_pred = model.predict(X)
             
             # Plot the data and the regression line
+            st.markdown("**Calibration plot**")
             fig, ax = plt.subplots()
             ax.plot(df['x'], df['y'], 'o', label='Data points')
             ax.plot(df['x'], y_pred, '-', label='Regression line')
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            ax.set_title('Scatter plot of x vs y with regression line')
+            #ax.set_title('Scatter plot of x vs y with regression line')
             ax.legend()
             
             # Display the plot in Streamlit
