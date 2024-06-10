@@ -151,16 +151,21 @@ def render_basic_calibration():
             # Display the test result
             st.markdown("**Breusch-Pagan Test for Homoscedasticity**")
 
+            # Get the test result
+            test_result_bp = sms.het_breuschpagan(fit.resid, fit.model.exog)
+
+            # Display Breusch-Pagan test statistics
+            st.write("P-value:", test_result_bp[1])
+            st.write("Degrees of freedom:", test_result_bp[2])
+            st.write("F-statistic:", test_result_bp[3])
+
             # Interpret Breusch-Pagan test results
-            if test_result[1] > 0.05:
+            if test_result_bp[1] > 0.05:
                 st.write("The Breusch-Pagan test for Homoscedasticity is not significant (p > 0.05), indicating that the residuals have constant variance (homoscedasticity).")
-                st.write("The distribution of residuals and the test result should be visually verified with the following residual plots.")
             else:
                 st.write("The Breusch-Pagan test for Homoscedasticity is significant (p <= 0.05), suggesting that the residuals may not have constant variance (heteroscedasticity).")
-                st.write("Considering the potential violation of homoscedasticity assumption, weighted calibration may be advisable.")
+                st.write("Considering the potential violation of homoscedasticity assumption, further diagnostics or transformations may be necessary.")
                 st.write("The distribution of residuals and the test result should be visually verified with the following residual plots.")
-
-            # Display Residual plots subsection
 
             # Display Residual plots subsection
             st.markdown("**Residual plots**")
@@ -199,19 +204,23 @@ def render_basic_calibration():
             st.pyplot(fig_rel_error)
             
             # Model assumptions - Normality of Residuals
+            # Display Shapiro-Wilk test results
             st.subheader("Model assumptions - Normality of Residuals")
             st.markdown("**Shapiro-Wilk Test for Normality of Residuals**")
 
-            # Perform Shapiro-Wilk test for normality of residuals
-            _, p_value = shapiro(residuals)
+            test_statistic_sw, p_value_sw = shapiro(fit.resid)
+
+            # Display Shapiro-Wilk test statistics
+            st.write("W-statistic):", test_statistic_sw)
+            st.write("P-value:", p_value_sw)
+
 
             # Interpret Shapiro-Wilk test results
-            if p_value > 0.05:
+            if p_value_sw > 0.05:
                 st.write("The Shapiro-Wilk test for normality of residuals is not significant (p > 0.05), indicating that the residuals are normally distributed.")
-                st.write("The distribution of residuals and the test result should be visually verified with the following QQ plot.")
             else:
                 st.write("The Shapiro-Wilk test for normality of residuals is significant (p <= 0.05), suggesting that the residuals may not be normally distributed.")
-                st.write("Considering the potential violation of normality assumption, weighted calibration may be advisable.")
+                st.write("Considering the non-normal distribution of residuals, weighted calibration may be advisable.")
                 st.write("The distribution of residuals and the test result should be visually verified with the following QQ plot.")
 
             st.markdown("**Quantile-Quantile Plot**")
