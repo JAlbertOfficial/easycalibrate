@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score, mean_squared_error
 
 ###############################################################
 # Define page titles
@@ -89,16 +90,35 @@ def render_basic_calibration():
 
             # Show slope of the fitted regression line
             st.markdown("**Slope of the fitted regression line:**")
-            st.write(f"{model.coef_[0]}")
+            st.write(model.coef_[0])
 
             # Show intercept of the fitted regression line
             st.markdown("**Intercept of the fitted regression line:**")
-            st.write(f"{model.intercept_}")
+            st.write(model.intercept_)
             
+            # Display Model evaluation section
+            st.subheader("Model evaluation")
+
+            # Calculate adjusted R-squared
+            n = len(y)
+            p = 1  # number of predictors
+            r_squared = model.score(X, y)
+            adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
+            st.markdown("**Adjusted R-squared**:")
+            st.write(adjusted_r_squared)
+
+            # Calculate mean squared errors (MSE)
+            mse = np.mean((y_pred - y) ** 2)
+            st.markdown("**Mean Squared Error (MSE)**:")
+            st.write(mse)
+
+            # Calculate root mean squared errors (RMSE)
+            rmse = np.sqrt(mse)
+            st.markdown("**Root Mean Squared Error (RMSE)**:")
+            st.write(rmse)
+
         else:
             st.error("The number of x values must be equal to the number of y values.")
-
-
 
 ###############################################################
 # Function to render improved calibration page
