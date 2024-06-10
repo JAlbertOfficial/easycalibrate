@@ -11,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_squared_error
 import plotly.express as px
 from scipy.interpolate import make_interp_spline
-
+import statsmodels.api as sm
 
 
 ###############################################################
@@ -166,6 +166,19 @@ def render_basic_calibration():
             ax_rel_error.set_ylabel('Relative Error')
             ax_rel_error.set_title("Relative Error vs x")
             st.pyplot(fig_rel_error)
+
+            # Model assumptions - Normality of Residuals
+            st.subheader("Model assumptions - Normality of Residuals")
+            st.markdown("***Quantile-Quantile Plot***")
+
+            # Generate QQ plot
+            fig_qq, ax_qq = plt.subplots()
+            sm.qqplot(standardized_residuals, line ='45', ax=ax_qq)
+            ax_qq.set_xlabel('Theoretical quantiles')
+            ax_qq.set_ylabel('Standardized residuals')
+            ax_qq.set_title('QQ Plot of Standardized Residuals')
+            st.pyplot(fig_qq)
+
 
         else:
             st.error("The number of x values must be equal to the number of y values.")
