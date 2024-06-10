@@ -13,6 +13,13 @@ import plotly.express as px
 from scipy.interpolate import make_interp_spline
 from scipy.stats import shapiro
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from statsmodels.compat import lzip
+import statsmodels.stats.api as sms
+from statsmodels.stats.diagnostic import het_breuschpagan
+import statsmodels.stats.diagnostic as smd
+
+
 
 
 ###############################################################
@@ -131,11 +138,32 @@ def render_basic_calibration():
             # Display Model assumptions - Homoscedasticity section
             st.subheader("Model assumptions - Homoscedasticity")
 
+            # Calculate residuals
+            residuals = y - y_pred         
+ 
+            # Conduct the Breusch-Pagan test
+            fit = smf.ols('y_values ~ x_values', data=df).fit()
+            names = ['Lagrange multiplier statistic', 'p-value', 'f-value', 'f p-value']
+
+            # Get the test result
+            test_result = sms.het_breuschpagan(fit.resid, fit.model.exog)
+
+            # Display the test result
+            st.markdown("**Breusch-Pagan Test for Homoscedasticity**")
+
+            # Interpret Breusch-Pagan test results
+            if test_result[1] > 0.05:
+                st.write("The Breusch-Pagan test for Homoscedasticity is not significant (p > 0.05), indicating that the residuals have constant variance (homoscedasticity).")
+                st.write("The distribution of residuals and the test result should be visually verified with the following residual plots.")
+            else:
+                st.write("The Breusch-Pagan test for Homoscedasticity is significant (p <= 0.05), suggesting that the residuals may not have constant variance (heteroscedasticity).")
+                st.write("Considering the potential violation of homoscedasticity assumption, weighted calibration may be advisable.")
+                st.write("The distribution of residuals and the test result should be visually verified with the following residual plots.")
+
+            # Display Residual plots subsection
+
             # Display Residual plots subsection
             st.markdown("**Residual plots**")
-
-            # Calculate residuals
-            residuals = y - y_pred
 
             # Residuals vs x plot
             fig_resid, ax_resid = plt.subplots()
@@ -180,9 +208,10 @@ def render_basic_calibration():
             # Interpret Shapiro-Wilk test results
             if p_value > 0.05:
                 st.write("The Shapiro-Wilk test for normality of residuals is not significant (p > 0.05), indicating that the residuals are normally distributed.")
+                st.write("The distribution of residuals and the test result should be visually verified with the following QQ plot.")
             else:
                 st.write("The Shapiro-Wilk test for normality of residuals is significant (p <= 0.05), suggesting that the residuals may not be normally distributed.")
-                st.write("Considering the non-normal distribution of residuals, weighted calibration may be advisable.")
+                st.write("Considering the potential violation of normality assumption, weighted calibration may be advisable.")
                 st.write("The distribution of residuals and the test result should be visually verified with the following QQ plot.")
 
             st.markdown("**Quantile-Quantile Plot**")
