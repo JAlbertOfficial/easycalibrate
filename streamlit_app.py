@@ -36,9 +36,20 @@ def render_basic_calibration():
     st.subheader("Basic Calibration Page")
     st.write("This is the Basic Calibration page!")
     
+    # Default values for x and y
+   # Default values for x and y
+    default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
+                    "0.500, 0.500, 0.500, 1.250, 1.250, 1.250, "
+                    "2.500, 2.500, 2.500, 5.000, 5.000, 5.000, "
+                    "12.500, 12.500, 12.500, 25.000, 25.000, 25.000")
+    default_y_values = ("9.102775, 9.102971, 9.096732, 22.658198, 22.882701, 22.830106, "
+                    "77.690938, 75.064287, 80.320072, 197.030149, 197.390646, 196.477779, "
+                    "388.543543, 382.672992, 378.273372, 844.937521, 799.804932, 799.695752, "
+                    "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
+
     # User inputs
-    x_input = st.text_area("Enter x values (comma separated)", "")
-    y_input = st.text_area("Enter y values (comma separated)", "")
+    x_input = st.text_area("Enter x values (comma separated)", default_x_values)
+    y_input = st.text_area("Enter y values (comma separated)", default_y_values)
     
     if st.button("Perform classic calibration"):
         # Convert input strings to lists
@@ -72,6 +83,7 @@ def render_basic_calibration():
             st.pyplot(fig)
         else:
             st.error("The number of x values must be equal to the number of y values.")
+
 
 ###############################################################
 # Function to render improved calibration page
