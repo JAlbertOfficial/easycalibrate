@@ -5,6 +5,9 @@
 
 import streamlit as st
 from streamlit_option_menu import option_menu
+import pandas as pd
+import matplotlib.pyplot as plt
+
 
 ###############################################################
 # Define page titles
@@ -30,6 +33,24 @@ def render_home():
 def render_basic_calibration():
     st.subheader("Basic Calibration Page")
     st.write("This is the Basic Calibration page!")
+    
+    # User inputs
+    x_input = st.text_area("Enter x values (comma separated)", "")
+    y_input = st.text_area("Enter y values (comma separated)", "")
+    
+    if st.button("Perform classic calibration"):
+        # Convert input strings to lists
+        x_values = [float(i) for i in x_input.split(',') if i.strip()]
+        y_values = [float(i) for i in y_input.split(',') if i.strip()]
+        
+        # Check if both lists have the same length
+        if len(x_values) == len(y_values):
+            # Create a dataframe
+            data = {'x': x_values, 'y': y_values}
+            df = pd.DataFrame(data)
+            st.dataframe(df)            
+        else:
+            st.error("The number of x values must be equal to the number of y values.")
 
 ###############################################################
 # Function to render improved calibration page
