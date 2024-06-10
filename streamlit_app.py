@@ -7,7 +7,8 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
 
 ###############################################################
@@ -46,23 +47,29 @@ def render_basic_calibration():
         
         # Check if both lists have the same length
         if len(x_values) == len(y_values):
-
             # Create a dataframe
             data = {'x': x_values, 'y': y_values}
             df = pd.DataFrame(data)
-            st.dataframe(df)  
-
-            # Create scatterplot 
+            st.dataframe(df)
+            
+            # Perform linear regression
+            X = np.array(x_values).reshape(-1, 1)
+            y = np.array(y_values)
+            model = LinearRegression()
+            model.fit(X, y)
+            y_pred = model.predict(X)
+            
+            # Plot the data and the regression line
             fig, ax = plt.subplots()
-            ax.plot(df['x'], df['y'], 'o')
-            ax.set_xlabel('Nominal values')
-            ax.set_ylabel('Signal')
-            ax.set_title("Ordinary Least Square Calibration")
-
-            # Display the plot
+            ax.plot(df['x'], df['y'], 'o', label='Data points')
+            ax.plot(df['x'], y_pred, '-', label='Regression line')
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_title('Scatter plot of x vs y with regression line')
+            ax.legend()
+            
+            # Display the plot in Streamlit
             st.pyplot(fig)
-
-            plt.plot(df.x,df.y,'o')          
         else:
             st.error("The number of x values must be equal to the number of y values.")
 
