@@ -343,17 +343,42 @@ def render_improved_calibration():
                 results.append({
                     'Model': model_name,
                     'Adjusted R-squared': adjusted_r_squared,
+                    'SRE': sre,
+                    'MRE': mre,
                     'Mean Squared Error (MSE)': mse,
                     'Root Mean Squared Error (RMSE)': rmse,
                     'AIC': aic,
-                    'BIC (NIC)': bic,
-                    'SRE': sre,
-                    'MRE': mre
+                    'BIC (NIC)': bic
+                    
                 })
 
             # Convert results to DataFrame
             results_df = pd.DataFrame(results)
             
+            with st.expander("Calibration plots"):
+                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+
+                # OLS regression plot
+                ax1.scatter(df['x'], df['y'], label='Data')
+                ax1.plot(df['x'], model_ordinary.predict(sm.add_constant(df['x'])), color='red', label='OLS Regression')
+                ax1.set_title('OLS Regression')
+                ax1.set_xlabel(x_label)
+                ax1.set_ylabel(y_label)
+                ax1.legend()
+
+                # Find model with lowest MRE
+                min_mre_model = results_df.loc[results_df['MRE'].idxmin(), 'Model']
+
+                # WLS model plot with lowest MRE
+                ax2.scatter(df['x'], df['y'], label='Data')
+                ax2.plot(df['x'], models[min_mre_model].predict(sm.add_constant(df['x'])), color='green', label=f'WLS Regression ({min_mre_model})')
+                ax2.set_title(f'WLS Regression ({min_mre_model})')
+                ax2.set_xlabel(x_label)
+                ax2.set_ylabel(y_label)
+                ax2.legend()
+
+                st.pyplot(fig)
+
             with st.expander("View model evaluation metrics"):
                 st.dataframe(results_df)
 
@@ -361,7 +386,6 @@ def render_improved_calibration():
 
         else:
             st.error("The number of x values must be equal to the number of y values.")
-
 
 
 ###############################################################
