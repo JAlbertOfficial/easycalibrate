@@ -235,8 +235,6 @@ def render_basic_calibration():
 ###############################################################
 
 
-import matplotlib.pyplot as plt
-
 def render_improved_calibration():
     st.header("Improved Calibration Page")
     st.write("This is the Improved Calibration page!")
@@ -385,26 +383,46 @@ def render_improved_calibration():
 
             # Plotting model evaluation plots
             with st.expander("Model evaluation plots"):
-                sorted_results_df = results_df.sort_values(by='Adjusted R-squared', ascending=False)
-                model_names = sorted_results_df['Model']
-                r_squared_values = sorted_results_df['Adjusted R-squared']
+                # Sort results dataframe based on the specified metric
+                def sort_dataframe(metric, ascending=True):
+                    sorted_df = results_df.sort_values(by=metric, ascending=ascending)
+                    model_names = sorted_df['Model']
+                    colors = ['red' if model == 'ordinary_linear_regression' else 'green' if model == min_mre_model_name else 'blue' for model in model_names]
+                    return sorted_df, model_names, colors
 
-                fig, ax = plt.subplots(figsize=(10, 6))
+                # Define metrics to plot
+                metrics_to_plot = ['Adjusted R-squared', 'SRE', 'MRE', 'Mean Squared Error (MSE)', 'Root Mean Squared Error (RMSE)', 'AIC', 'BIC (NIC)']
+                
+                # Create subplots
+                fig, axes = plt.subplots(len(metrics_to_plot), 1, figsize=(10, 6*len(metrics_to_plot)))
 
-                colors = ['red' if model == 'ordinary_linear_regression' else 'green' if model == min_mre_model_name else 'blue' for model in model_names]
-                ax.bar(model_names, r_squared_values, color=colors)
-                ax.set_xlabel('Model')
-                ax.set_ylabel('Adjusted R-squared')
-                ax.set_title('Model Comparison by Adjusted R-squared')
-                ax.set_yscale('log')
-                ax.grid(True, which='both', axis='y', linestyle='--', linewidth=0.5)  
+                for i, metric in enumerate(metrics_to_plot):
+                    # Sort dataframe based on the current metric
+                    ascending = False if metric == 'Adjusted R-squared' else True  # Sort in ascending order only for Adjusted R-squared
+                    sorted_df, model_names, colors = sort_dataframe(metric, ascending=ascending)
 
+                    # Plot the bar chart
+                    ax = axes[i]
+                    ax.bar(model_names, sorted_df[metric], color=colors)
+                    ax.set_xlabel('Model')
+                    ax.set_ylabel(metric)
+                    ax.set_title(f'Model Comparison by {metric}')
+
+                    # Set y-scale
+                    if metric == 'Adjusted R-squared':
+                        ax.set_yscale('log')
+
+                    # Add horizontal grid lines
+                    ax.grid(True, which='both', axis='y', linestyle='--', linewidth=0.5)
+
+                plt.tight_layout()
                 st.pyplot(fig)
 
-            st.write("Models fitted successfully.")     
+            st.write("Models fitted successfully.")
 
-        else:
-            st.error("The number of x values must be equal to the number of y values.")
+
+
+
 
                
 
