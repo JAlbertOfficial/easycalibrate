@@ -18,6 +18,7 @@ from statsmodels.compat import lzip
 import statsmodels.stats.api as sms
 from statsmodels.stats.diagnostic import het_breuschpagan
 import statsmodels.stats.diagnostic as smd
+from statsmodels.regression.linear_model import OLS
 
 ###############################################################
 # Define page titles
@@ -233,9 +234,63 @@ def render_basic_calibration():
 # Function to render improved calibration page
 ###############################################################
 
+
+
 def render_improved_calibration():
     st.header("Improved Calibration Page")
     st.write("This is the Improved Calibration page!")
+
+    with st.expander("Import Data"):
+        # Default values for x and y
+        default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
+                            "0.500, 0.500, 0.500, 1.250, 1.250, 1.250, "
+                            "2.500, 2.500, 2.500, 5.000, 5.000, 5.000, "
+                            "12.500, 12.500, 12.500, 25.000, 25.000, 25.000")
+        default_y_values = ("9.102775, 9.102971, 9.096732, 22.658198, 22.882701, 22.830106, "
+                            "77.690938, 75.064287, 80.320072, 197.030149, 197.390646, 196.477779, "
+                            "388.543543, 382.672992, 378.273372, 844.937521, 799.804932, 799.695752, "
+                            "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
+
+        # User inputs
+        x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
+        y_label = st.text_input("Enter the label for y", "Peakarea")
+        x_input = st.text_area("Enter x values (comma separated)", default_x_values)
+        y_input = st.text_area("Enter y values (comma separated)", default_y_values)
+
+    if st.button("Perform classic calibration"):
+        # Convert input strings to lists
+        x_values = [float(i) for i in x_input.split(',') if i.strip()]
+        y_values = [float(i) for i in y_input.split(',') if i.strip()]
+
+        # Check if both lists have the same length
+        if len(x_values) == len(y_values):
+            # Create a dataframe
+            data = {'x': x_values, 'y': y_values}
+            df = pd.DataFrame(data)
+            with st.expander("View raw data"):
+                st.dataframe(df)
+
+            # Calculate weighted values
+            df['x0.5'] = 1 / np.sqrt(df['x'])
+            df['x1'] = 1 / df['x']
+            df['x2'] = 1 / (df['x'] ** 2)
+            df['y0.5'] = 1 / np.sqrt(df['y'])
+            df['y1'] = 1 / df['y']
+            df['y2'] = 1 / (df['y'] ** 2)
+            df['sdy0.5'] = 1 / np.sqrt(df.groupby('x')['y'].transform('std'))
+            df['sdy1'] = 1 / df.groupby('x')['y'].transform('std')
+            df['sdy2'] = 1 / (df.groupby('x')['y'].transform('std') ** 2)
+            df['sde0.5'] = 1 / np.abs(OLS(df['y'], df['x']).fit().resid) ** 0.5
+            df['sde1'] = 1 / np.abs(OLS(df['y'], df['x']).fit().resid)
+            df['sde2'] = 1 / (np.abs(OLS(df['y'], df['x']).fit().resid) ** 2)
+
+            st.write("Data with weighted values:")
+            st.dataframe(df)
+
+        else:
+            st.error("The number of x values must be equal to the number of y values.")
+
+
 
 ###############################################################
 # Function to render references page
