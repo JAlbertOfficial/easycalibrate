@@ -235,7 +235,6 @@ def render_basic_calibration():
 ###############################################################
 
 
-
 def render_improved_calibration():
     st.header("Improved Calibration Page")
     st.write("This is the Improved Calibration page!")
@@ -257,7 +256,7 @@ def render_improved_calibration():
         x_input = st.text_area("Enter x values (comma separated)", default_x_values)
         y_input = st.text_area("Enter y values (comma separated)", default_y_values)
 
-    if st.button("Perform classic calibration"):
+    if st.button("Perform weighted calibration"):
         # Convert input strings to lists
         x_values = [float(i) for i in x_input.split(',') if i.strip()]
         y_values = [float(i) for i in y_input.split(',') if i.strip()]
@@ -280,15 +279,25 @@ def render_improved_calibration():
             df['sdy0.5'] = 1 / np.sqrt(df.groupby('x')['y'].transform('std'))
             df['sdy1'] = 1 / df.groupby('x')['y'].transform('std')
             df['sdy2'] = 1 / (df.groupby('x')['y'].transform('std') ** 2)
-            df['sde0.5'] = 1 / np.abs(OLS(df['y'], df['x']).fit().resid) ** 0.5
-            df['sde1'] = 1 / np.abs(OLS(df['y'], df['x']).fit().resid)
-            df['sde2'] = 1 / (np.abs(OLS(df['y'], df['x']).fit().resid) ** 2)
+            df['sde0.5'] = 1 / np.abs(sm.OLS(df['y'], df[['x']]).fit().resid) ** 0.5
+            df['sde1'] = 1 / np.abs(sm.OLS(df['y'], df[['x']]).fit().resid)
+            df['sde2'] = 1 / (np.abs(sm.OLS(df['y'], df[['x']]).fit().resid) ** 2)
 
             st.write("Data with weighted values:")
             st.dataframe(df)
 
+            # Perform weighted linear regression
+            models = {}
+            weights = ['x0.5', 'x1', 'x2', 'y0.5', 'y1', 'y2', 'sdy0.5', 'sdy1', 'sdy2', 'sde0.5', 'sde1', 'sde2']
+            for weight in weights:
+                model = sm.WLS(df['y'], sm.add_constant(df['x']), weights=df[weight]).fit()
+                models[weight] = model
+
+            # Models are stored in the models dictionary but not yet displayed or used
         else:
             st.error("The number of x values must be equal to the number of y values.")
+
+
 
 
 
