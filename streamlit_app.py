@@ -298,9 +298,50 @@ def render_improved_calibration():
                 model = sm.WLS(df['y'], sm.add_constant(df['x']), weights=df[weight_scheme]).fit()
                 models[weight_scheme] = model
 
+            # Calculate evaluation metrics for each model
+            results = []
+            for model_name, model in models.items():
+                # Make predictions
+                y_pred = model.predict(sm.add_constant(df['x']))
+
+                # Calculate adjusted R-squared
+                n = len(df['y'])
+                p = 1  # number of predictors
+                r_squared = model.rsquared
+                adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
+
+                # Calculate mean squared error (MSE)
+                mse = np.mean((df['y'] - y_pred) ** 2)
+
+                # Calculate root mean squared error (RMSE)
+                rmse = np.sqrt(mse)
+
+                # Calculate AIC
+                aic = model.aic
+
+                # Calculate BIC (also known as NIC in some contexts)
+                bic = model.bic
+
+                results.append({
+                    'Model': model_name,
+                    'Adjusted R-squared': adjusted_r_squared,
+                    'Mean Squared Error (MSE)': mse,
+                    'Root Mean Squared Error (RMSE)': rmse,
+                    'AIC': aic,
+                    'BIC (NIC)': bic
+                })
+
+            # Convert results to DataFrame
+            results_df = pd.DataFrame(results)
+            
+            with st.expander("View model evaluation metrics"):
+                st.dataframe(results_df)
+
             st.write("Models fitted successfully.")
         else:
             st.error("The number of x values must be equal to the number of y values.")
+
+
 
 
 
