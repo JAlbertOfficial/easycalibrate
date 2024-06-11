@@ -235,6 +235,8 @@ def render_basic_calibration():
 ###############################################################
 
 
+import matplotlib.pyplot as plt
+
 def render_improved_calibration():
     st.header("Improved Calibration Page")
     st.write("This is the Improved Calibration page!")
@@ -349,43 +351,63 @@ def render_improved_calibration():
                     'Root Mean Squared Error (RMSE)': rmse,
                     'AIC': aic,
                     'BIC (NIC)': bic
-                    
                 })
 
             # Convert results to DataFrame
             results_df = pd.DataFrame(results)
             
+            with st.expander("View model evaluation metrics"):
+                st.dataframe(results_df)
+
+            # Plotting calibration plots
             with st.expander("Calibration plots"):
-                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+                fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
                 # OLS regression plot
-                ax1.scatter(df['x'], df['y'], label='Data')
-                ax1.plot(df['x'], model_ordinary.predict(sm.add_constant(df['x'])), color='red', label='OLS Regression')
-                ax1.set_title('OLS Regression')
-                ax1.set_xlabel(x_label)
-                ax1.set_ylabel(y_label)
-                ax1.legend()
+                axes[0].scatter(df['x'], df['y'], label='Actual')
+                axes[0].plot(df['x'], model_ordinary.predict(sm.add_constant(df['x'])), color='red', label='OLS Regression')
+                axes[0].set_xlabel(x_label)
+                axes[0].set_ylabel(y_label)
+                axes[0].set_title('OLS Regression Plot')
+                axes[0].legend()
 
-                # Find model with lowest MRE
-                min_mre_model = results_df.loc[results_df['MRE'].idxmin(), 'Model']
-
-                # WLS model plot with lowest MRE
-                ax2.scatter(df['x'], df['y'], label='Data')
-                ax2.plot(df['x'], models[min_mre_model].predict(sm.add_constant(df['x'])), color='green', label=f'WLS Regression ({min_mre_model})')
-                ax2.set_title(f'WLS Regression ({min_mre_model})')
-                ax2.set_xlabel(x_label)
-                ax2.set_ylabel(y_label)
-                ax2.legend()
+                # WLS regression plot with lowest MRE
+                min_mre_model_name = results_df.loc[results_df['MRE'].idxmin(), 'Model']
+                min_mre_model = models[min_mre_model_name]
+                axes[1].scatter(df['x'], df['y'], label='Actual')
+                axes[1].plot(df['x'], min_mre_model.predict(sm.add_constant(df['x'])), color='green', label=f'WLS Regression ({min_mre_model_name})')
+                axes[1].set_xlabel(x_label)
+                axes[1].set_ylabel(y_label)
+                axes[1].set_title(f'WLS Regression Plot ({min_mre_model_name})')
+                axes[1].legend()
 
                 st.pyplot(fig)
 
-            with st.expander("View model evaluation metrics"):
-                st.dataframe(results_df)
+            # Plotting model evaluation plots
+            with st.expander("Model evaluation plots"):
+                sorted_results_df = results_df.sort_values(by='Adjusted R-squared', ascending=False)
+                model_names = sorted_results_df['Model']
+                r_squared_values = sorted_results_df['Adjusted R-squared']
+
+                fig, ax = plt.subplots(figsize=(10, 6))
+
+                colors = ['red' if model == 'ordinary_linear_regression' else 'green' if model == min_mre_model_name else 'blue' for model in model_names]
+                ax.bar(model_names, r_squared_values, color=colors)
+                ax.set_xlabel('Model')
+                ax.set_ylabel('Adjusted R-squared')
+                ax.set_title('Model Comparison by Adjusted R-squared')
+                ax.set_yscale('log')
+                ax.grid(True, which='both', axis='y', linestyle='--', linewidth=0.5)  
+
+                st.pyplot(fig)
 
             st.write("Models fitted successfully.")     
 
         else:
             st.error("The number of x values must be equal to the number of y values.")
+
+               
+
 
 
 ###############################################################
