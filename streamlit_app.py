@@ -234,7 +234,6 @@ def render_basic_calibration():
 # Function to render improved calibration page
 ###############################################################
 
-
 def render_improved_calibration():
     st.header("Improved Calibration Page")
     st.write("This is the Improved Calibration page!")
@@ -257,6 +256,7 @@ def render_improved_calibration():
         y_input = st.text_area("Enter y values (comma separated)", default_y_values)
 
     if st.button("Perform classic calibration"):
+
         # Convert input strings to lists
         x_values = [float(i) for i in x_input.split(',') if i.strip()]
         y_values = [float(i) for i in y_input.split(',') if i.strip()]
@@ -266,10 +266,6 @@ def render_improved_calibration():
             # Create a dataframe
             data = {'x': x_values, 'y': y_values}
             df = pd.DataFrame(data)
-            with st.expander("View raw data"):
-                st.dataframe(df)
-
-            import statsmodels.api as sm
 
             # Perform ordinary linear regression
             model_ordinary = sm.OLS(df['y'], sm.add_constant(df['x'])).fit()
@@ -309,8 +305,6 @@ def render_improved_calibration():
                     'Model': model_name,
                     'Relative Error': relative_error.mean()
                 })
-            with st.expander("View calculated x and relative errors"):
-                st.dataframe(df)                  
 
             # Calculate evaluation metrics for each model
             results = []
@@ -353,27 +347,63 @@ def render_improved_calibration():
 
             # Convert results to DataFrame
             results_df = pd.DataFrame(results)
-            
-            with st.expander("View model evaluation metrics"):
-                st.dataframe(results_df)
 
-            # Plotting calibration plots
+            # Find the model with the lowest MRE
+            # Find the model with the lowest MRE
+            min_mre_model_name = results_df.loc[results_df['MRE'].idxmin(), 'Model']
+            min_mre_model = models[min_mre_model_name]
+
+            # Expander - View raw data
+            with st.expander("View raw data"):
+                st.dataframe(df)
+
+            # Expander - View calculated x and relative errors
+            with st.expander("View calculated x and relative errors"):
+                st.dataframe(df)
+
+            # Expander - Improved Calibration Plot
+            with st.expander("Improved Calibration Plot"):
+                # Plot the data and the regression line
+                fig, ax = plt.subplots()
+                ax.plot(df['x'], df['y'], 'o', label='Data points')
+                ax.plot(df['x'], min_mre_model.predict(sm.add_constant(df['x'])), '-', label='Regression line')
+                ax.set_xlabel(x_label)
+                ax.set_ylabel(y_label)
+                ax.legend()
+
+                # Display the plot in Streamlit
+                st.pyplot(fig)
+
+            # Expander - Improved Calibration Function
+            with st.expander("Improved Calibration Function"):
+                st.markdown("**Formula of fitted linear regression:**")
+                st.write(f"{y_label} = {min_mre_model.params[1]} * {x_label} + {min_mre_model.params[0]}")
+
+                # Show slope of the fitted regression line
+                st.markdown("**Slope of the fitted regression line:**")
+                st.write(min_mre_model.params[1])
+
+                # Show intercept of the fitted regression line
+                st.markdown("**Intercept of the fitted regression line:**")
+                st.write(min_mre_model.params[0])
+
+            # Expander - Calibration plots
             with st.expander("Calibration plots"):
                 fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
                 # OLS regression plot
                 axes[0].scatter(df['x'], df['y'], label='Actual')
-                axes[0].plot(df['x'], model_ordinary.predict(sm.add_constant(df['x'])), color='red', label='OLS Regression')
+                axes[0].plot(df['x'], model_ordinary.predict(sm.add_constant(df['x'])), color='red',
+                             label='OLS Regression')
                 axes[0].set_xlabel(x_label)
                 axes[0].set_ylabel(y_label)
                 axes[0].set_title('OLS Regression Plot')
                 axes[0].legend()
 
                 # WLS regression plot with lowest MRE
-                min_mre_model_name = results_df.loc[results_df['MRE'].idxmin(), 'Model']
-                min_mre_model = models[min_mre_model_name]
                 axes[1].scatter(df['x'], df['y'], label='Actual')
-                axes[1].plot(df['x'], min_mre_model.predict(sm.add_constant(df['x'])), color='green', label=f'WLS Regression ({min_mre_model_name})')
+                axes[1].plot(df['x'], min_mre_model.predict(sm.add_constant(df['x'])), color='green',
+                             label=f'WLS Regression ({min_mre_model_name})')
                 axes[1].set_xlabel(x_label)
                 axes[1].set_ylabel(y_label)
                 axes[1].set_title(f'WLS Regression Plot ({min_mre_model_name})')
@@ -381,24 +411,30 @@ def render_improved_calibration():
 
                 st.pyplot(fig)
 
-            # Plotting model evaluation plots
+            # Expander - View model evaluation metrics
+            with st.expander("View model evaluation metrics"):
+                st.dataframe(results_df)
+
+            # Expander - Model evaluation plots
             with st.expander("Model evaluation plots"):
                 # Sort results dataframe based on the specified metric
                 def sort_dataframe(metric, ascending=True):
                     sorted_df = results_df.sort_values(by=metric, ascending=ascending)
                     model_names = sorted_df['Model']
-                    colors = ['red' if model == 'ordinary_linear_regression' else 'green' if model == min_mre_model_name else 'blue' for model in model_names]
+                    colors = ['red' if model == 'ordinary_linear_regression' else 'green' if
+                              model == min_mre_model_name else 'blue' for model in model_names]
                     return sorted_df, model_names, colors
 
                 # Define metrics to plot
-                metrics_to_plot = ['Adjusted R-squared', 'SRE', 'MRE', 'Mean Squared Error (MSE)', 'Root Mean Squared Error (RMSE)', 'AIC', 'BIC (NIC)']
-                
+                metrics_to_plot = ['Adjusted R-squared', 'SRE', 'MRE', 'Mean Squared Error (MSE)',
+                                   'Root Mean Squared Error (RMSE)', 'AIC', 'BIC (NIC)']
+
                 # Create subplots
-                fig, axes = plt.subplots(len(metrics_to_plot), 1, figsize=(10, 6*len(metrics_to_plot)))
+                fig, axes = plt.subplots(len(metrics_to_plot), 1, figsize=(10, 6 * len(metrics_to_plot)))
 
                 for i, metric in enumerate(metrics_to_plot):
                     # Sort dataframe based on the current metric
-                    ascending = False if metric == 'Adjusted R-squared' else True  # Sort in ascending order only for Adjusted R-squared
+                    ascending = False if metric == 'Adjusted R-squared' else True
                     sorted_df, model_names, colors = sort_dataframe(metric, ascending=ascending)
 
                     # Plot the bar chart
@@ -417,14 +453,6 @@ def render_improved_calibration():
 
                 plt.tight_layout()
                 st.pyplot(fig)
-
-            st.write("Models fitted successfully.")
-
-
-
-
-
-               
 
 
 
