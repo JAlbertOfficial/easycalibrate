@@ -355,11 +355,7 @@ def render_improved_calibration():
 
             # Expander - View raw data
             with st.expander("View raw data"):
-                st.dataframe(df)
-
-            # Expander - View calculated x and relative errors
-            with st.expander("View calculated x and relative errors"):
-                st.dataframe(df)
+                st.dataframe(df[['x', 'y']])
 
             # Expander - Improved Calibration Plot
             with st.expander("Improved Calibration Plot"):
@@ -453,8 +449,6 @@ def render_improved_calibration():
 
                 plt.tight_layout()
                 st.pyplot(fig)
-
-
 
 ###############################################################
 # Function to render references page
