@@ -298,6 +298,20 @@ def render_improved_calibration():
                 model = sm.WLS(df['y'], sm.add_constant(df['x']), weights=df[weight_scheme]).fit()
                 models[weight_scheme] = model
 
+            # Calculate relative errors and x_calc for each model
+            re_results = []
+            for model_name, model in models.items():
+                x_calc = (df['y'] - model.params[0]) / model.params[1]
+                relative_error = (x_calc - df['x']) / df['x']
+                df[f'{model_name}_x_calc'] = x_calc
+                df[f'{model_name}_re'] = relative_error
+                re_results.append({
+                    'Model': model_name,
+                    'Relative Error': relative_error.mean()
+                })
+            with st.expander("View calculated x and relative errors"):
+                st.dataframe(df)                  
+
             # Calculate evaluation metrics for each model
             results = []
             for model_name, model in models.items():
@@ -322,13 +336,19 @@ def render_improved_calibration():
                 # Calculate BIC (also known as NIC in some contexts)
                 bic = model.bic
 
+                # Calculate SRE and MRE
+                sre = np.abs(df[f'{model_name}_re']).sum()
+                mre = np.abs(df[f'{model_name}_re']).mean()
+
                 results.append({
                     'Model': model_name,
                     'Adjusted R-squared': adjusted_r_squared,
                     'Mean Squared Error (MSE)': mse,
                     'Root Mean Squared Error (RMSE)': rmse,
                     'AIC': aic,
-                    'BIC (NIC)': bic
+                    'BIC (NIC)': bic,
+                    'SRE': sre,
+                    'MRE': mre
                 })
 
             # Convert results to DataFrame
@@ -337,13 +357,10 @@ def render_improved_calibration():
             with st.expander("View model evaluation metrics"):
                 st.dataframe(results_df)
 
-            st.write("Models fitted successfully.")
+            st.write("Models fitted successfully.")     
+
         else:
             st.error("The number of x values must be equal to the number of y values.")
-
-
-
-
 
 
 
