@@ -37,207 +37,197 @@ def render_home():
     st.header("Home Page")
     st.write("Welcome to the Home page!")
 
-import streamlit as st
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-import statsmodels.api as sm
-import statsmodels.stats.api as sms
-import statsmodels.formula.api as smf
-import scipy.stats as stats
-import statsmodels.stats.diagnostic as sm_diagnostic
+###############################################################
+# Function to render basic calibration page
+###############################################################
 
-def bc_import_data():
-    st.subheader("Import Data")
-    default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
-                        "0.500, 0.500, 0.500, 1.250, 1.250, 1.250, "
-                        "2.500, 2.500, 2.500, 5.000, 5.000, 5.000, "
-                        "12.500, 12.500, 12.500, 25.000, 25.000, 25.000")
-    default_y_values = ("9.102775, 9.102971, 9.096732, 22.658198, 22.882701, 22.830106, "
-                        "77.690938, 75.064287, 80.320072, 197.030149, 197.390646, 196.477779, "
-                        "388.543543, 382.672992, 378.273372, 844.937521, 799.804932, 799.695752, "
-                        "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
+def render_basic_calibration():
+    st.header("Basic Calibration Page")
 
-    x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
-    y_label = st.text_input("Enter the label for y", "Peakarea")
-    x_input = st.text_area("Enter x values (comma separated)", default_x_values)
-    y_input = st.text_area("Enter y values (comma separated)", default_y_values)
+    with st.expander("Import Data"):
+        # Default values for x and y
+        default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
+                            "0.500, 0.500, 0.500, 1.250, 1.250, 1.250, "
+                            "2.500, 2.500, 2.500, 5.000, 5.000, 5.000, "
+                            "12.500, 12.500, 12.500, 25.000, 25.000, 25.000")
+        default_y_values = ("9.102775, 9.102971, 9.096732, 22.658198, 22.882701, 22.830106, "
+                            "77.690938, 75.064287, 80.320072, 197.030149, 197.390646, 196.477779, "
+                            "388.543543, 382.672992, 378.273372, 844.937521, 799.804932, 799.695752, "
+                            "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
 
+        # User inputs
+        x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
+        y_label = st.text_input("Enter the label for y", "Peakarea")
+        x_input = st.text_area("Enter x values (comma separated)", default_x_values)
+        y_input = st.text_area("Enter y values (comma separated)", default_y_values)
+    
     if st.button("Perform classic calibration"):
+        # Convert input strings to lists
         x_values = [float(i) for i in x_input.split(',') if i.strip()]
         y_values = [float(i) for i in y_input.split(',') if i.strip()]
-
+        
+        # Check if both lists have the same length
         if len(x_values) == len(y_values):
-            bc_data = {'x': x_values, 'y': y_values}
-            bc_df = pd.DataFrame(bc_data)
-            st.session_state['df'] = bc_df
-            st.session_state['x_label'] = x_label
-            st.session_state['y_label'] = y_label
-
+            # Create a dataframe
+            data = {'x': x_values, 'y': y_values}
+            df = pd.DataFrame(data)
+            with st.expander("View raw data"):
+                st.dataframe(df)
+            
+            # Perform linear regression
             X = np.array(x_values).reshape(-1, 1)
             y = np.array(y_values)
             model = LinearRegression()
             model.fit(X, y)
             y_pred = model.predict(X)
-            st.session_state['model'] = model
-            st.session_state['y_pred'] = y_pred
+            
+            # Plot the data and the regression line
+            with st.expander("Calibration plot"):
+                fig, ax = plt.subplots()
+                ax.plot(df['x'], df['y'], 'o', label='Data points')
+                ax.plot(df['x'], y_pred, '-', label='Regression line')
+                ax.set_xlabel(x_label)
+                ax.set_ylabel(y_label)
+                ax.legend()
+            
+                # Display the plot in Streamlit
+                st.pyplot(fig)
 
-            st.success("Data imported and model trained successfully.")
+            # Display Calibration function section
+            with st.expander("Calibration function"):
+                st.markdown("**Formula of fitted linear regression:**")
+                st.write(f"{y_label} = {model.coef_[0]} * {x_label} + {model.intercept_}")
+
+                # Show slope of the fitted regression line
+                st.markdown("**Slope of the fitted regression line:**")
+                st.write(model.coef_[0])
+
+                # Show intercept of the fitted regression line
+                st.markdown("**Intercept of the fitted regression line:**")
+                st.write(model.intercept_)
+
+            # Display Model evaluation section
+            with st.expander("Model evaluation"):
+                st.subheader("Model evaluation")
+
+                # Calculate adjusted R-squared
+                n = len(y)
+                p = 1  # number of predictors
+                r_squared = model.score(X, y)
+                adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
+                st.markdown("**Adjusted R-squared**:")
+                st.write(adjusted_r_squared)
+
+                # Calculate mean squared errors (MSE)
+                mse = mean_squared_error(y, y_pred)
+                st.markdown("**Mean Squared Error (MSE)**:")
+                st.write(mse)
+
+                # Calculate root mean squared errors (RMSE)
+                rmse = np.sqrt(mse)
+                st.markdown("**Root Mean Squared Error (RMSE)**:")
+                st.write(rmse)
+
+            # Display Model assumptions - Homoscedasticity section
+            with st.expander("Model assumptions - Homoscedasticity"):
+                st.subheader("Model assumptions - Homoscedasticity")
+
+                # Calculate residuals
+                residuals = y - y_pred         
+    
+                # Conduct the Breusch-Pagan test
+                fit = smf.ols('y_values ~ x_values', data=df).fit()
+                names = ['Lagrange multiplier statistic', 'p-value', 'f-value', 'f p-value']
+
+                # Get the test result
+                test_result = sms.het_breuschpagan(fit.resid, fit.model.exog)
+
+                # Display the test result
+                st.markdown("**Breusch-Pagan Test for Homoscedasticity**")
+
+                # Get the test result
+                test_result_bp = sms.het_breuschpagan(fit.resid, fit.model.exog)
+
+                # Display Breusch-Pagan test statistics
+                st.write("P-value:", test_result_bp[1])
+                st.write("Degrees of freedom:", test_result_bp[2])
+                st.write("F-statistic:", test_result_bp[3])
+
+                # Interpret Breusch-Pagan test results
+                if test_result_bp[1] > 0.05:
+                    st.write("The Breusch-Pagan test for Homoscedasticity is not significant (p > 0.05), indicating that the residuals have constant variance (homoscedasticity).")
+                else:
+                    st.write("The Breusch-Pagan test for Homoscedasticity is significant (p <= 0.05), suggesting that the residuals may not have constant variance (heteroscedasticity).")
+                    st.write("Considering the potential violation of homoscedasticity assumption, further diagnostics or transformations may be necessary.")
+                    st.write("The distribution of residuals and the test result should be visually verified with the following residual plots.")
+
+                # Display Residual plots subsection
+                st.markdown("**Residual plots**")
+
+                # Residuals vs x plot
+                fig_resid, ax_resid = plt.subplots()
+                ax_resid.scatter(df['x'], residuals)
+                ax_resid.axhline(y=0, color='black', linestyle='--')
+                ax_resid.set_xlabel(x_label)
+                ax_resid.set_ylabel('Residuals')
+                ax_resid.set_title(f"Residuals vs {x_label}")
+                st.pyplot(fig_resid)
+                
+                # Calculate standardized residuals
+                standardized_residuals = residuals / np.std(residuals)
+
+                # square root of the absolute value of standardized residuals vs x plot
+                fig_sqrt_std_res, ax_sqrt_std_res = plt.subplots()
+                ax_sqrt_std_res.scatter(df['x'], np.sqrt(np.abs(standardized_residuals)))
+                ax_sqrt_std_res.set_xlabel(x_label)
+                ax_sqrt_std_res.set_ylabel('sqrt(|Standardized Residuals|)')
+                ax_sqrt_std_res.set_title(f"sqrt(|Standardized Residuals|) vs {x_label}")
+                st.pyplot(fig_sqrt_std_res)
+
+                # Calculate relative error
+                x_calc = (y - model.intercept_) / model.coef_[0]
+                relative_error = (x_calc - df['x']) / df['x']
+
+                # Relative Error vs x plot
+                fig_rel_error, ax_rel_error = plt.subplots()
+                ax_rel_error.scatter(df['x'], relative_error)
+                ax_rel_error.axhline(y=0, color='black', linestyle='--')
+                ax_rel_error.set_xlabel(x_label)
+                ax_rel_error.set_ylabel('Relative Error')
+                ax_rel_error.set_title(f"Relative Error vs {x_label}")
+                st.pyplot(fig_rel_error)
+            
+            # Model assumptions - Normality of Residuals
+            with st.expander("Model assumptions - Normality of Residuals"):
+                st.subheader("Model assumptions - Normality of Residuals")
+                st.markdown("**Shapiro-Wilk Test for Normality of Residuals**")
+
+                test_statistic_sw, p_value_sw = shapiro(fit.resid)
+
+                # Display Shapiro-Wilk test statistics
+                st.write("W-statistic:", test_statistic_sw)
+                st.write("P-value:", p_value_sw)
+
+                # Interpret Shapiro-Wilk test results
+                if p_value_sw > 0.05:
+                    st.write("The Shapiro-Wilk test for normality of residuals is not significant (p > 0.05), indicating that the residuals are normally distributed.")
+                else:
+                    st.write("The Shapiro-Wilk test for normality of residuals is significant (p <= 0.05), suggesting that the residuals may not be normally distributed.")
+                    st.write("Considering the non-normal distribution of residuals, weighted calibration may be advisable.")
+                    st.write("The distribution of residuals and the test result should be visually verified with the following QQ plot.")
+
+                st.markdown("**Quantile-Quantile Plot**")
+
+                # Generate QQ plot
+                fig_qq, ax_qq = plt.subplots()
+                sm.qqplot(standardized_residuals, line ='45', ax=ax_qq)
+                ax_qq.set_xlabel('Theoretical quantiles')
+                ax_qq.set_ylabel('Standardized residuals')
+                ax_qq.set_title('QQ Plot of Standardized Residuals')
+                st.pyplot(fig_qq)
+
         else:
             st.error("The number of x values must be equal to the number of y values.")
-
-def view_raw_data():
-    st.subheader("View Raw Data")
-    if 'df' in st.session_state:
-        st.dataframe(st.session_state['df'])
-    else:
-        st.error("No data available. Please import data first.")
-
-def calibration_plot():
-    st.subheader("Calibration Plot")
-    if 'df' in st.session_state and 'model' in st.session_state:
-        df = st.session_state['df']
-        model = st.session_state['model']
-        y_pred = st.session_state['y_pred']
-        x_label = st.session_state['x_label']
-        y_label = st.session_state['y_label']
-
-        fig, ax = plt.subplots()
-        ax.plot(df['x'], df['y'], 'o', label='Data points')
-        ax.plot(df['x'], y_pred, '-', label='Regression line')
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(y_label)
-        ax.legend()
-
-        st.pyplot(fig)
-    else:
-        st.error("No data or model available. Please import data first.")
-
-def calibration_function():
-    st.subheader("Calibration Function")
-    if 'model' in st.session_state:
-        model = st.session_state['model']
-        x_label = st.session_state['x_label']
-        y_label = st.session_state['y_label']
-        st.markdown("**Formula of fitted linear regression:**")
-        st.write(f"{y_label} = {model.coef_[0]} * {x_label} + {model.intercept_}")
-        st.markdown("**Slope of the fitted regression line:**")
-        st.write(model.coef_[0])
-        st.markdown("**Intercept of the fitted regression line:**")
-        st.write(model.intercept_)
-    else:
-        st.error("No model available. Please import data first.")
-
-def model_evaluation():
-    st.subheader("Model evaluation")
-    if 'model' in st.session_state:
-        model = st.session_state['model']
-        y = st.session_state['df']['y']
-        y_pred = st.session_state['y_pred']
-        n = len(y)
-        p = 1  # number of predictors
-        r_squared = model.score(np.array(st.session_state['df']['x']).reshape(-1, 1), y)
-        adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
-        mse = mean_squared_error(y, y_pred)
-        rmse = np.sqrt(mse)
-        st.markdown("**Adjusted R-squared**:")
-        st.write(adjusted_r_squared)
-        st.markdown("**Mean Squared Error (MSE)**:")
-        st.write(mse)
-        st.markdown("**Root Mean Squared Error (RMSE)**:")
-        st.write(rmse)
-    else:
-        st.error("No model available. Please import data first.")
-
-def model_assumptions_homoscedasticity():
-    st.subheader("Model Assumptions - Homoscedasticity")
-    if 'df' in st.session_state and 'model' in st.session_state:
-        df = st.session_state['df']
-        model = st.session_state['model']
-        residuals = st.session_state['df']['y'] - st.session_state['y_pred']
-        fit = smf.ols('y ~ x', data=df).fit()
-        test_result_bp = sm_diagnostic.het_breuschpagan(fit.resid, fit.model.exog)
-
-        st.markdown("**Breusch-Pagan Test for Homoscedasticity**")
-        st.write("P-value:", test_result_bp[1])
-        st.write("Degrees of freedom:", test_result_bp[2])
-        st.write("F-statistic:", test_result_bp[3])
-
-        if test_result_bp[1] > 0.05:
-            st.write("The Breusch-Pagan test for Homoscedasticity is not significant (p > 0.05), indicating that the residuals have constant variance (homoscedasticity).")
-        else:
-            st.write("The Breusch-Pagan test for Homoscedasticity is significant (p <= 0.05), suggesting that the residuals may not have constant variance (heteroscedasticity).")
-            st.write("Considering the potential violation of homoscedasticity assumption, further diagnostics or transformations may be necessary.")
-            st.write("The distribution of residuals and the test result should be visually verified with the following residual plots.")
-
-        st.markdown("**Residual plots**")
-        fig_resid, ax_resid = plt.subplots()
-        ax_resid.scatter(df['x'], residuals)
-        ax_resid.axhline(y=0, color='black', linestyle='--')
-        ax_resid.set_xlabel(st.session_state['x_label'])
-        ax_resid.set_ylabel("Residuals")
-        ax_resid.set_title("Residual plot")
-        st.pyplot(fig_resid)
-    else:
-        st.error("No data or model available. Please import data first.")
-
-def model_assumptions_normality():
-    st.subheader("Model Assumptions - Normality of Residuals")
-    if 'df' in st.session_state and 'model' in st.session_state:
-        df = st.session_state['df']
-        residuals = st.session_state['df']['y'] - st.session_state['y_pred']
-        shapiro_test = stats.shapiro(residuals)
-
-        st.markdown("**Shapiro-Wilk Test for Normality of Residuals**")
-        st.write("P-value:", shapiro_test[1])
-
-        if shapiro_test[1] > 0.05:
-            st.write("The Shapiro-Wilk test for Normality of Residuals is not significant (p > 0.05), indicating that the residuals are normally distributed.")
-        else:
-            st.write("The Shapiro-Wilk test for Normality of Residuals is significant (p <= 0.05), suggesting that the residuals may not be normally distributed.")
-            st.write("Considering the potential violation of normality assumption, further diagnostics or transformations may be necessary.")
-            st.write("The distribution of residuals and test result should be visually verified with the following Q-Q plot.")
-        st.markdown("**Q-Q plot of residuals**")
-        fig_qq, ax_qq = plt.subplots()
-        sm.qqplot(residuals, line='s', ax=ax_qq)
-        ax_qq.set_title("Q-Q plot of residuals")
-        st.pyplot(fig_qq)
-    else:
-        st.error("No data or model available. Please import data first.")
-
-
-def render_basic_calibration():
-    st.header("Basic Calibration Page")
-
-    bc_section = st.sidebar.radio(
-        "Navigate Basic Calibration",
-        ["Import Data", "View Raw Data", "Calibration Plot", "Calibration Function", 
-         "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"]
-    )
-
-    if bc_section == "Import Data":
-        bc_import_data()
-
-    elif bc_section == "View Raw Data":
-        view_raw_data()
-
-    elif bc_section == "Calibration Plot":
-        calibration_plot()
-
-    elif bc_section == "Calibration Function":
-        calibration_function()
-
-    elif bc_section == "Model evaluation":
-        model_evaluation()
-
-    elif bc_section == "Model Assumptions - Homoscedasticity":
-        model_assumptions_homoscedasticity()
-
-    elif bc_section == "Model Assumptions - Normality of Residuals":
-        model_assumptions_normality()
-
 
 
 ###############################################################
