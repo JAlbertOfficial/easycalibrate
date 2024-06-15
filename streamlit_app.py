@@ -206,7 +206,7 @@ def bc_calibration_function():
         st.error("No model available. Please import data first.")
 
 def bc_model_evaluation():
-    st.subheader("Model evaluation")
+    st.subheader("Model Evaluation")
     if 'model' in st.session_state:
         model = st.session_state['model']
         y = st.session_state['df']['y']
@@ -226,8 +226,11 @@ def bc_model_evaluation():
     else:
         st.error("No model available. Please import data first.")
 
-def bc_model_assumptions_homoscedasticity():
-    st.subheader("Model Assumptions - Homoscedasticity")
+def bc_model_assumptions():
+    st.header("Model Assumptions")
+    
+    # Homoscedasticity
+    st.subheader("Homoscedasticity")
     if 'df' in st.session_state and 'model' in st.session_state:
         df = st.session_state['df']
         model = st.session_state['model']
@@ -256,9 +259,9 @@ def bc_model_assumptions_homoscedasticity():
         st.pyplot(fig_resid)
     else:
         st.error("No data or model available. Please import data first.")
-
-def bc_model_assumptions_normality():
-    st.subheader("Model Assumptions - Normality of Residuals")
+    
+    # Normality of Residuals
+    st.subheader("Normality of Residuals")
     if 'df' in st.session_state and 'model' in st.session_state:
         df = st.session_state['df']
         residuals = st.session_state['df']['y'] - st.session_state['y_pred']
@@ -286,9 +289,9 @@ def render_basic_calibration():
             bc_section = st.sidebar.radio(
                 "",
                 ["Import Data", "View Data", "Calibration Plot", "Calibration Function", 
-                "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"],
+                "Model Evaluation", "Model Assumptions"],
                 index=["Import Data", "View Data", "Calibration Plot", "Calibration Function", 
-                       "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"].index(st.session_state.get('current_section', "Import Data"))
+                       "Model Evaluation", "Model Assumptions"].index(st.session_state.get('current_section', "Import Data"))
             )
         else:
             bc_section = st.sidebar.radio(
@@ -314,14 +317,11 @@ def render_basic_calibration():
     elif bc_section == "Calibration Function":
         bc_calibration_function()
 
-    elif bc_section == "Model evaluation":
+    elif bc_section == "Model Evaluation":
         bc_model_evaluation()
 
-    elif bc_section == "Model Assumptions - Homoscedasticity":
-        bc_model_assumptions_homoscedasticity()
-
-    elif bc_section == "Model Assumptions - Normality of Residuals":
-        bc_model_assumptions_normality()
+    elif bc_section == "Model Assumptions":
+        bc_model_assumptions()
 
 ###############################################################
 # Function to render improved calibration page
