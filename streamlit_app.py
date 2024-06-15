@@ -102,42 +102,43 @@ def bc_import_data():
 
     elif data_source == "Upload File":
         st.subheader("Upload File")
-        uploaded_file = st.file_uploader("Upload a CSV, XLSX, ODS, or XLS file", type=["csv", "xlsx", "ods", "xls"])
+        uploaded_file = st.file_uploader("Select a CSV, XLSX, ODS, or XLS file", type=["csv", "xlsx", "ods", "xls"])
 
         if uploaded_file is not None:
-            try:
-                if uploaded_file.name.endswith('.csv'):
-                    df = pd.read_csv(uploaded_file, header=0, sep=None, engine='python')
-                else:
-                    df = pd.read_excel(uploaded_file, header=0)  # Load file with headers
+            x_label = st.text_input("Enter a name for the x-variable:", "Concentration[mg/L]")
+            y_label = st.text_input("Enter a name for the y-variable:", "Peak area")
 
-                if len(df.columns) < 2:
-                    st.error("The uploaded file should have at least two columns (x and y values).")
-                else:
-                    # Drop rows with non-numeric values
-                    df = df.dropna().apply(pd.to_numeric, errors='coerce').dropna()
-
-                    if df.empty:
-                        st.error("The uploaded file does not contain valid numeric data.")
+            if st.button("Import data"):
+                try:
+                    if uploaded_file.name.endswith('.csv'):
+                        df = pd.read_csv(uploaded_file, header=0, sep=None, engine='python')
                     else:
-                        df.columns = ['x', 'y']  # Assign column names after loading the file
-                        st.session_state['df'] = df
+                        df = pd.read_excel(uploaded_file, header=0)  # Load file with headers
 
-                        st.write("The x-values represent the known concentrations or quantities of the analyte being measured. "
-                                 "The y-values correspond to the measured signal produced by the analyte at each known concentration.")
+                    if len(df.columns) < 2:
+                        st.error("The uploaded file should have at least two columns (x and y values).")
+                    else:
+                        # Drop rows with non-numeric values
+                        df = df.dropna().apply(pd.to_numeric, errors='coerce').dropna()
 
-                        x_label = st.text_input("Enter a name for the x-variable:", "Concentration[mg/L]")
-                        y_label = st.text_input("Enter a name for the y-variable:", "Peak area")
+                        if df.empty:
+                            st.error("The uploaded file does not contain valid numeric data.")
+                        else:
+                            df.columns = ['x', 'y']  # Assign column names after loading the file
+                            st.session_state['df'] = df
 
-                        st.session_state['x_label'] = x_label
-                        st.session_state['y_label'] = y_label
+                            st.write("The x-values represent the known concentrations or quantities of the analyte being measured. "
+                                     "The y-values correspond to the measured signal produced by the analyte at each known concentration.")
 
-                        st.success("Data imported successfully.")
-                        st.session_state['data_imported'] = True
-                        st.experimental_rerun()
+                            st.session_state['x_label'] = x_label
+                            st.session_state['y_label'] = y_label
 
-            except Exception as e:
-                st.error(f"Error: {e}")
+                            st.success("Data imported successfully.")
+                            st.session_state['data_imported'] = True
+                            st.experimental_rerun()
+
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
 def bc_train_model():
     st.subheader("Train Calibration Model")
