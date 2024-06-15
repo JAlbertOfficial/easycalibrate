@@ -51,8 +51,8 @@ def bc_import_data():
 
     if data_source == "Manual Input":
         st.subheader("Enter Data Manually")
-        st.write("The x values represent the known concentrations or quantities of the analyte being measured. "
-                 "The y values correspond to the measured signal produced by the analyte at each known concentration.")
+        st.write("The x-values represent the known concentrations or quantities of the analyte being measured. "
+                 "The y-values correspond to the measured signal produced by the analyte at each known concentration.")
         # Default values for demonstration
         default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
                             "0.500, 0.500, 0.500, 1.250, 1.250, 1.250, "
@@ -67,18 +67,18 @@ def bc_import_data():
         col1, col2 = st.columns(2)
 
         with col1:
-            x_label = st.text_input("Enter a name for the x variable:", "Concentration[mg/L]")
+            x_label = st.text_input("Enter a name for the x-variable:", "Concentration[mg/L]")
 
         with col2:
-            y_label = st.text_input("Enter a name for the y variable:", "Peak area")
+            y_label = st.text_input("Enter a name for the y-variable:", "Peak area")
 
         st.write("")  # empty line for spacing
 
         with col1:
-            x_input = st.text_area("Enter X-values (comma separated):", default_x_values)
+            x_input = st.text_area("Enter x-values (comma separated):", default_x_values)
 
         with col2:
-            y_input = st.text_area("Enter Y-values (comma separated):", default_y_values)
+            y_input = st.text_area("Enter y-values (comma separated):", default_y_values)
 
         st.write("")  # empty line for spacing
 
@@ -98,7 +98,7 @@ def bc_import_data():
                 st.session_state['data_imported'] = True
                 st.experimental_rerun()
             else:
-                st.error("The number of X-values must be equal to the number of corresponding measured responses.")
+                st.error("The number of x-values must be equal to the number of corresponding y-values.")
 
     elif data_source == "Upload File":
         st.subheader("Upload File")
@@ -112,7 +112,7 @@ def bc_import_data():
                     df = pd.read_excel(uploaded_file, header=0)  # Load file with headers
 
                 if len(df.columns) < 2:
-                    st.error("The uploaded file should have at least two columns (X and Y values).")
+                    st.error("The uploaded file should have at least two columns (x and y values).")
                 else:
                     # Drop rows with non-numeric values
                     df = df.dropna().apply(pd.to_numeric, errors='coerce').dropna()
@@ -123,11 +123,11 @@ def bc_import_data():
                         df.columns = ['x', 'y']  # Assign column names after loading the file
                         st.session_state['df'] = df
 
-                        st.write("The x values represent the known concentrations or quantities of the analyte being measured. "
-                                 "The y values correspond to the measured signal produced by the analyte at each known concentration.")
+                        st.write("The x-values represent the known concentrations or quantities of the analyte being measured. "
+                                 "The y-values correspond to the measured signal produced by the analyte at each known concentration.")
 
-                        x_label = st.text_input("Enter a name for the x variable:", "Concentration[mg/L]")
-                        y_label = st.text_input("Enter a name for the y variable:", "Peak area")
+                        x_label = st.text_input("Enter a name for the x-variable:", "Concentration[mg/L]")
+                        y_label = st.text_input("Enter a name for the y-variable:", "Peak area")
 
                         st.session_state['x_label'] = x_label
                         st.session_state['y_label'] = y_label
@@ -281,14 +281,14 @@ def render_basic_calibration():
     if st.session_state.get('data_imported'):
         if st.session_state.get('model_trained'):
             bc_section = st.sidebar.radio(
-                "Navigate Basic Calibration",
-                ["Import Data", "View Raw Data", "Calibration Plot", "Calibration Function", 
+                "",
+                ["Import Data", "View Data", "Calibration Plot", "Calibration Function", 
                 "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"]
             )
         else:
             bc_section = st.sidebar.radio(
                 "Navigate Basic Calibration",
-                ["Import Data", "View Raw Data"]
+                ["Import Data", "View Data"]
             )
     else:
         bc_section = st.sidebar.radio(
@@ -299,7 +299,7 @@ def render_basic_calibration():
     if bc_section == "Import Data":
         bc_import_data()
 
-    elif bc_section == "View Raw Data":
+    elif bc_section == "View Data":
         bc_raw_data()
 
     elif bc_section == "Calibration Plot":
