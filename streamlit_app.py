@@ -45,41 +45,79 @@ def render_home():
 
 def bc_import_data():
     st.subheader("Import Data")
-    default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
-                        "0.500, 0.500, 0.500, 1.250, 1.250, 1.250, "
-                        "2.500, 2.500, 2.500, 5.000, 5.000, 5.000, "
-                        "12.500, 12.500, 12.500, 25.000, 25.000, 25.000")
-    default_y_values = ("9.102775, 9.102971, 9.096732, 22.658198, 22.882701, 22.830106, "
-                        "77.690938, 75.064287, 80.320072, 197.030149, 197.390646, 196.477779, "
-                        "388.543543, 382.672992, 378.273372, 844.937521, 799.804932, 799.695752, "
-                        "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
-    x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
-    y_label = st.text_input("Enter the label for y", "Peakarea")
-    x_input = st.text_area("Enter x values (comma separated)", default_x_values)
-    y_input = st.text_area("Enter y values (comma separated)", default_y_values)
 
-    if st.button("Perform classic calibration"):
-        x_values = [float(i) for i in x_input.split(',') if i.strip()]
-        y_values = [float(i) for i in y_input.split(',') if i.strip()]
+    data_source = st.radio("Select data import method:", ("Manual Input", "Upload File"))
 
-        if len(x_values) == len(y_values):
-            data = {'x': x_values, 'y': y_values}
-            df = pd.DataFrame(data)
-            st.session_state['df'] = df
-            st.session_state['x_label'] = x_label
-            st.session_state['y_label'] = y_label
+    if data_source == "Manual Input":
+        st.subheader("Enter Data Manually")
+        default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
+                            "0.500, 0.500, 0.500, 1.250, 1.250, 1.250, "
+                            "2.500, 2.500, 2.500, 5.000, 5.000, 5.000, "
+                            "12.500, 12.500, 12.500, 25.000, 25.000, 25.000")
+        default_y_values = ("9.102775, 9.102971, 9.096732, 22.658198, 22.882701, 22.830106, "
+                            "77.690938, 75.064287, 80.320072, 197.030149, 197.390646, 196.477779, "
+                            "388.543543, 382.672992, 378.273372, 844.937521, 799.804932, 799.695752, "
+                            "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
+        x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
+        y_label = st.text_input("Enter the label for y", "Peakarea")
+        x_input = st.text_area("Enter x values (comma separated)", default_x_values)
+        y_input = st.text_area("Enter y values (comma separated)", default_y_values)
 
-            X = np.array(x_values).reshape(-1, 1)
-            y = np.array(y_values)
-            model = LinearRegression()
-            model.fit(X, y)
-            y_pred = model.predict(X)
-            st.session_state['model'] = model
-            st.session_state['y_pred'] = y_pred
+        if st.button("Perform classic calibration"):
+            x_values = [float(i) for i in x_input.split(',') if i.strip()]
+            y_values = [float(i) for i in y_input.split(',') if i.strip()]
 
-            st.success("Data imported and model trained successfully.")
-        else:
-            st.error("The number of x values must be equal to the number of y values.")
+            if len(x_values) == len(y_values):
+                data = {'x': x_values, 'y': y_values}
+                df = pd.DataFrame(data)
+                st.session_state['df'] = df
+                st.session_state['x_label'] = x_label
+                st.session_state['y_label'] = y_label
+
+                X = np.array(x_values).reshape(-1, 1)
+                y = np.array(y_values)
+                model = LinearRegression()
+                model.fit(X, y)
+                y_pred = model.predict(X)
+                st.session_state['model'] = model
+                st.session_state['y_pred'] = y_pred
+
+                st.success("Data imported and model trained successfully.")
+            else:
+                st.error("The number of x values must be equal to the number of y values.")
+
+    elif data_source == "Upload File":
+        st.subheader("Upload File")
+        uploaded_file = st.file_uploader("Upload a CSV, XLSX, ODS, or XLS file", type=["csv", "xlsx", "ods", "xls"])
+
+        if uploaded_file is not None:
+            try:
+                df = pd.read_excel(uploaded_file)  # adjust according to the file format
+                if len(df.columns) < 2:
+                    st.error("The uploaded file should have at least two columns (X and Y values).")
+                else:
+                    df.columns = ['x', 'y']  # assuming the first column is x and second is y
+                    st.session_state['df'] = df
+
+                    x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
+                    y_label = st.text_input("Enter the label for y", "Peakarea")
+
+                    st.session_state['x_label'] = x_label
+                    st.session_state['y_label'] = y_label
+
+                    X = df[['x']].values
+                    y = df['y'].values
+                    model = LinearRegression()
+                    model.fit(X, y)
+                    y_pred = model.predict(X)
+                    st.session_state['model'] = model
+                    st.session_state['y_pred'] = y_pred
+
+                    if st.button("Perform classic calibration"):
+                        st.success("Data imported and model trained successfully.")
+
+            except Exception as e:
+                st.error(f"Error: {e}")
 
 def bc_raw_data():
     st.subheader("Calibration Data")
