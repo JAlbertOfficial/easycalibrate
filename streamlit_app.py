@@ -96,6 +96,7 @@ def bc_import_data():
 
                 st.success("Data imported successfully.")
                 st.session_state['data_imported'] = True
+                st.session_state['current_section'] = "View Data"
                 st.experimental_rerun()
             else:
                 st.error("The number of x-values must be equal to the number of corresponding y-values.")
@@ -135,6 +136,7 @@ def bc_import_data():
 
                             st.success("Data imported successfully.")
                             st.session_state['data_imported'] = True
+                            st.session_state['current_section'] = "View Data"
                             st.experimental_rerun()
 
                 except Exception as e:
@@ -156,6 +158,7 @@ def bc_train_model():
 
         st.success("Calibration model trained successfully.")
         st.session_state['model_trained'] = True
+        st.session_state['current_section'] = "Calibration Plot"
         st.experimental_rerun()
 
 def bc_raw_data():
@@ -278,18 +281,20 @@ def bc_model_assumptions_normality():
         st.error("No data or model available. Please import data first.")
 
 def render_basic_calibration():
-    
     if st.session_state.get('data_imported'):
         if st.session_state.get('model_trained'):
             bc_section = st.sidebar.radio(
                 "",
                 ["Import Data", "View Data", "Calibration Plot", "Calibration Function", 
-                "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"]
+                "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"],
+                index=["Import Data", "View Data", "Calibration Plot", "Calibration Function", 
+                       "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"].index(st.session_state.get('current_section', "Import Data"))
             )
         else:
             bc_section = st.sidebar.radio(
                 "Navigate Basic Calibration",
-                ["Import Data", "View Data"]
+                ["Import Data", "View Data"],
+                index=["Import Data", "View Data"].index(st.session_state.get('current_section', "Import Data"))
             )
     else:
         bc_section = st.sidebar.radio(
@@ -317,7 +322,6 @@ def render_basic_calibration():
 
     elif bc_section == "Model Assumptions - Normality of Residuals":
         bc_model_assumptions_normality()
-  
 
 ###############################################################
 # Function to render improved calibration page
