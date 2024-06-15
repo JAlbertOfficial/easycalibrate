@@ -172,23 +172,117 @@ def bc_raw_data():
         st.error("No data available. Please import data first.")
 
 def bc_calibration_plot():
-    st.subheader("Calibration Plot")
+    st.subheader("Customize Calibration Plot")
     if 'df' in st.session_state and 'model' in st.session_state:
         df = st.session_state['df']
         model = st.session_state['model']
         y_pred = st.session_state['y_pred']
-        x_label = st.session_state['x_label']
-        y_label = st.session_state['y_label']
-        fig, ax = plt.subplots()
-        ax.plot(df['x'], df['y'], 'o', label='Data points')
-        ax.plot(df['x'], y_pred, '-', label='Regression line')
+        x_label_default = st.session_state['x_label']
+        y_label_default = st.session_state['y_label']
+
+        with st.expander("Labels"):
+            # Layout für Checkboxen und Eingabefelder in einem 2x2-Grid
+            col1, col2 = st.columns(2)
+
+            with col1:
+                show_r_squared = st.checkbox("Show adjusted R-squared", value=True)
+                if show_r_squared:
+                    r_squared_decimals = st.number_input("Decimal places for R-squared", min_value=1, max_value=10, value=3, key="r2_decimals")
+
+                x_label = st.text_input("X-axis label:", x_label_default)
+
+            with col2:
+                show_equation = st.checkbox("Show calibration equation", value=True)
+                if show_equation:
+                    equation_decimals = st.number_input("Decimal places for equation", min_value=1, max_value=10, value=3, key="eq_decimals")
+
+                y_label = st.text_input("Y-axis label:", y_label_default)
+
+            title = st.text_input("Plot title:", "Calibration Plot")
+
+        with st.expander("Size"):
+            # Slider für die Breite und Höhe des Plots
+            width = st.slider("Plot width (cm)", min_value=3, max_value=24, value=14)
+            height = st.slider("Plot height (cm)", min_value=3, max_value=24, value=12)
+
+        with st.expander("Colors and Shapes"):
+            # Auswahl für Farben und Formen
+            col1, col2 = st.columns(2)
+
+            with col1:
+                point_color = st.color_picker("Pick a color for points", "#1f77b4")
+                line_color = st.color_picker("Pick a color for the line", "#ff7f0e")
+
+            with col2:
+                # Verfügbare Marker
+                markers = {
+                    'Circle': 'o',
+                    'Square': 's',
+                    'Diamond': 'D',
+                    'Up Triangle': '^',
+                    'Down Triangle': 'v',
+                    'Left Triangle': '<',
+                    'Right Triangle': '>',
+                    'Pentagon': 'p',
+                    'Hexagon': 'h'
+                }
+
+                marker_labels = list(markers.keys())
+                marker_display = ["● Circle", "■ Square", "◆ Diamond", "▲ Up Triangle", "▼ Down Triangle", "◀ Left Triangle", "▶ Right Triangle", "⬟ Pentagon", "⬢ Hexagon"]
+                selected_marker_label = st.selectbox("Select marker style for points", marker_display)
+                selected_marker = markers[marker_labels[marker_display.index(selected_marker_label)]]
+
+                line_styles = {
+                    'Solid': '-',
+                    'Dashed': '--',
+                    'Dash-dot': '-.',
+                    'Dotted': ':'
+                }
+
+                line_style_labels = list(line_styles.keys())
+                line_style_display = ["Solid", "Dashed", "Dash-dot", "Dotted"]
+                selected_line_style_label = st.selectbox("Select line style", line_style_display)
+                selected_line_style = line_styles[selected_line_style_label]
+
+        # Berechnung des Konfidenzintervalls
+        X = df[['x']].values
+        se = np.sqrt(np.sum((y_pred - df['y'])**2) / (len(df) - 2))
+        t_val = stats.t.ppf(1 - 0.025, df=len(df) - 2)
+        ci = t_val * se * np.sqrt(1 / len(df) + (X - np.mean(X))**2 / np.sum((X - np.mean(X))**2))
+        ci = ci.flatten()  # Sicherstellen, dass ci 1-dimensional ist
+
+        # Plot erstellen
+        fig, ax = plt.subplots(figsize=(width / 2.54, height / 2.54))  # Konvertieren von cm zu Zoll
+        ax.plot(df['x'], df['y'], marker=selected_marker, linestyle='None', color=point_color)  # Datenpunkte
+        ax.plot(df['x'], y_pred, linestyle=selected_line_style, color=line_color)  # Regressionslinie
+        ax.fill_between(df['x'], y_pred - ci, y_pred + ci, color=line_color, alpha=0.1)  # Konfidenzintervall
+
+        # Achsenbeschriftungen
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
-        ax.legend()
+        ax.set_title(title)
+
+        # Berechnung des adjustierten R-Quadrats
+        n = len(df)
+        p = 1  # Anzahl der Prädiktoren
+        r_squared = model.score(X, df['y'])
+        adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
+
+        # Anzeige der Kalibriergleichung und des adjustierten R-Quadrats basierend auf Benutzeroptionen
+        equation_text = ""
+        if show_r_squared:
+            equation_text += f"adj. R² = {adjusted_r_squared:.{r_squared_decimals}f}\n"
+        if show_equation:
+            equation_text += f"y = {model.coef_[0]:.{equation_decimals}f} * x + {model.intercept_:.{equation_decimals}f}"
+
+        if equation_text:
+            ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
 
         st.pyplot(fig)
     else:
         st.error("No data or model available. Please import data first.")
+
+
 
 def bc_calibration_function():
     st.subheader("Calibration Function")
