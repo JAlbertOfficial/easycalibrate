@@ -51,7 +51,7 @@ def bc_import_data():
 
     if data_source == "Manual Input":
         st.subheader("Enter Data Manually")
-        st.write("The x values represent the known concentrations or quantities of the analyte being measured."
+        st.write("The x values represent the known concentrations or quantities of the analyte being measured. "
                  "The y values correspond to the measured signal produced by the analyte at each known concentration.")
         # Default values for demonstration
         default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
@@ -112,32 +112,47 @@ def bc_import_data():
 
         if uploaded_file is not None:
             try:
-                df = pd.read_excel(uploaded_file)  # adjust according to the file format
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file, header=0, sep=None, engine='python')
+                else:
+                    df = pd.read_excel(uploaded_file, header=0)  # Load file with headers
+
                 if len(df.columns) < 2:
                     st.error("The uploaded file should have at least two columns (X and Y values).")
                 else:
-                    df.columns = ['x', 'y']  # assuming the first column is x and second is y
-                    st.session_state['df'] = df
+                    # Drop rows with non-numeric values
+                    df = df.dropna().apply(pd.to_numeric, errors='coerce').dropna()
 
-                    x_label = st.text_input("What are the nominal X-values?", "Concentration[mg/L]")
-                    y_label = st.text_input("What are the corresponding measured responses?", "Peak area")
+                    if df.empty:
+                        st.error("The uploaded file does not contain valid numeric data.")
+                    else:
+                        df.columns = ['x', 'y']  # Assign column names after loading the file
+                        st.session_state['df'] = df
 
-                    st.session_state['x_label'] = x_label
-                    st.session_state['y_label'] = y_label
+                        st.write("The x values represent the known concentrations or quantities of the analyte being measured. "
+                                 "The y values correspond to the measured signal produced by the analyte at each known concentration.")
 
-                    X = df[['x']].values
-                    y = df['y'].values
-                    model = LinearRegression()
-                    model.fit(X, y)
-                    y_pred = model.predict(X)
-                    st.session_state['model'] = model
-                    st.session_state['y_pred'] = y_pred
+                        x_label = st.text_input("Enter a name for the x variable:", "Concentration[mg/L]")
+                        y_label = st.text_input("Enter a name for the y variable:", "Peak area")
 
-                    if st.button("Import data and fit calibration model"):
-                        st.success("Data imported and model trained successfully.")
+                        st.session_state['x_label'] = x_label
+                        st.session_state['y_label'] = y_label
+
+                        X = df[['x']].values
+                        y = df['y'].values
+                        model = LinearRegression()
+                        model.fit(X, y)
+                        y_pred = model.predict(X)
+                        st.session_state['model'] = model
+                        st.session_state['y_pred'] = y_pred
+
+                        if st.button("Import data and fit calibration model"):
+                            st.success("Data imported and model trained successfully.")
 
             except Exception as e:
                 st.error(f"Error: {e}")
+
+
 
 def bc_raw_data():
     st.subheader("Calibration Data")
