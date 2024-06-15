@@ -82,8 +82,8 @@ def bc_import_data():
 
         st.write("")  # empty line for spacing
 
-        # Button to perform calibration
-        if st.button("Import data and fit calibration model"):
+        # Button to import data
+        if st.button("Import data"):
             x_values = [float(i) for i in x_input.split(',') if i.strip()]
             y_values = [float(i) for i in y_input.split(',') if i.strip()]
 
@@ -94,15 +94,9 @@ def bc_import_data():
                 st.session_state['x_label'] = x_label
                 st.session_state['y_label'] = y_label
 
-                X = np.array(x_values).reshape(-1, 1)
-                y = np.array(y_values)
-                model = LinearRegression()
-                model.fit(X, y)
-                y_pred = model.predict(X)
-                st.session_state['model'] = model
-                st.session_state['y_pred'] = y_pred
-
-                st.success("Data imported and model trained successfully.")
+                st.success("Data imported successfully.")
+                st.session_state['data_imported'] = True
+                st.experimental_rerun()
             else:
                 st.error("The number of X-values must be equal to the number of corresponding measured responses.")
 
@@ -138,26 +132,38 @@ def bc_import_data():
                         st.session_state['x_label'] = x_label
                         st.session_state['y_label'] = y_label
 
-                        X = df[['x']].values
-                        y = df['y'].values
-                        model = LinearRegression()
-                        model.fit(X, y)
-                        y_pred = model.predict(X)
-                        st.session_state['model'] = model
-                        st.session_state['y_pred'] = y_pred
-
-                        if st.button("Import data and fit calibration model"):
-                            st.success("Data imported and model trained successfully.")
+                        st.success("Data imported successfully.")
+                        st.session_state['data_imported'] = True
+                        st.experimental_rerun()
 
             except Exception as e:
                 st.error(f"Error: {e}")
 
+def bc_train_model():
+    st.subheader("Train Calibration Model")
+    if st.session_state.get('df') is not None:
+        df = st.session_state['df']
+        x_label = st.session_state['x_label']
+        y_label = st.session_state['y_label']
+        X = df[['x']].values
+        y = df['y'].values
+        model = LinearRegression()
+        model.fit(X, y)
+        y_pred = model.predict(X)
+        st.session_state['model'] = model
+        st.session_state['y_pred'] = y_pred
 
+        st.success("Calibration model trained successfully.")
+        st.session_state['model_trained'] = True
+        st.experimental_rerun()
 
 def bc_raw_data():
     st.subheader("Calibration Data")
     if 'df' in st.session_state:
         st.dataframe(st.session_state['df'])
+        st.write("")  # empty line for spacing
+        if st.button("Fit calibration model"):
+            bc_train_model()
     else:
         st.error("No data available. Please import data first.")
 
@@ -168,7 +174,7 @@ def bc_calibration_plot():
         model = st.session_state['model']
         y_pred = st.session_state['y_pred']
         x_label = st.session_state['x_label']
-        y_label = st.session_state['y_label']        
+        y_label = st.session_state['y_label']
         fig, ax = plt.subplots()
         ax.plot(df['x'], df['y'], 'o', label='Data points')
         ax.plot(df['x'], y_pred, '-', label='Regression line')
@@ -202,7 +208,7 @@ def bc_model_evaluation():
         y = st.session_state['df']['y']
         y_pred = st.session_state['y_pred']
         n = len(y)
-        p = 1 # number of predictors
+        p = 1  # number of predictors
         r_squared = model.score(np.array(st.session_state['df']['x']).reshape(-1, 1), y)
         adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
         mse = mean_squared_error(y, y_pred)
@@ -246,7 +252,7 @@ def bc_model_assumptions_homoscedasticity():
         st.pyplot(fig_resid)
     else:
         st.error("No data or model available. Please import data first.")
-   
+
 def bc_model_assumptions_normality():
     st.subheader("Model Assumptions - Normality of Residuals")
     if 'df' in st.session_state and 'model' in st.session_state:
@@ -272,11 +278,23 @@ def bc_model_assumptions_normality():
 
 def render_basic_calibration():
     
-    bc_section = st.sidebar.radio(
-        "Navigate Basic Calibration",
-        ["Import Data", "View Raw Data", "Calibration Plot", "Calibration Function", 
-        "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"]
-    )
+    if st.session_state.get('data_imported'):
+        if st.session_state.get('model_trained'):
+            bc_section = st.sidebar.radio(
+                "Navigate Basic Calibration",
+                ["Import Data", "View Raw Data", "Calibration Plot", "Calibration Function", 
+                "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"]
+            )
+        else:
+            bc_section = st.sidebar.radio(
+                "Navigate Basic Calibration",
+                ["Import Data", "View Raw Data"]
+            )
+    else:
+        bc_section = st.sidebar.radio(
+            "Navigate Basic Calibration",
+            ["Import Data"]
+        )
 
     if bc_section == "Import Data":
         bc_import_data()
@@ -307,7 +325,6 @@ def render_basic_calibration():
 def render_improved_calibration():
     st.header("Improved Calibration Page")
     st.write("This is the Improved Calibration page!")
-
 
 ###############################################################
 # Function to render references page
