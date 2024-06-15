@@ -44,12 +44,16 @@ def render_home():
 ###############################################################
 
 def bc_import_data():
-    st.subheader("Import Data")
+    st.header("Import Data")
+    st.write("The data can be entered manually or from an uploaded spreadsheet file.")
 
     data_source = st.radio("Select data import method:", ("Manual Input", "Upload File"))
 
     if data_source == "Manual Input":
         st.subheader("Enter Data Manually")
+        st.write("The x values represent the known concentrations or quantities of the analyte being measured."
+                 "The y values correspond to the measured signal produced by the analyte at each known concentration.")
+        # Default values for demonstration
         default_x_values = ("0.050, 0.050, 0.050, 0.125, 0.125, 0.125, "
                             "0.500, 0.500, 0.500, 1.250, 1.250, 1.250, "
                             "2.500, 2.500, 2.500, 5.000, 5.000, 5.000, "
@@ -58,12 +62,28 @@ def bc_import_data():
                             "77.690938, 75.064287, 80.320072, 197.030149, 197.390646, 196.477779, "
                             "388.543543, 382.672992, 378.273372, 844.937521, 799.804932, 799.695752, "
                             "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
-        x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
-        y_label = st.text_input("Enter the label for y", "Peakarea")
-        x_input = st.text_area("Enter x values (comma separated)", default_x_values)
-        y_input = st.text_area("Enter y values (comma separated)", default_y_values)
 
-        if st.button("Perform classic calibration"):
+        # Grid layout for input fields
+        col1, col2 = st.columns(2)
+
+        with col1:
+            x_label = st.text_input("Enter a name for the x variable:", "Concentration[mg/L]")
+
+        with col2:
+            y_label = st.text_input("Enter a name for the y variable:", "Peak area")
+
+        st.write("")  # empty line for spacing
+
+        with col1:
+            x_input = st.text_area("Enter X-values (comma separated):", default_x_values)
+
+        with col2:
+            y_input = st.text_area("Enter Y-values (comma separated):", default_y_values)
+
+        st.write("")  # empty line for spacing
+
+        # Button to perform calibration
+        if st.button("Import data and fit calibration model"):
             x_values = [float(i) for i in x_input.split(',') if i.strip()]
             y_values = [float(i) for i in y_input.split(',') if i.strip()]
 
@@ -84,7 +104,7 @@ def bc_import_data():
 
                 st.success("Data imported and model trained successfully.")
             else:
-                st.error("The number of x values must be equal to the number of y values.")
+                st.error("The number of X-values must be equal to the number of corresponding measured responses.")
 
     elif data_source == "Upload File":
         st.subheader("Upload File")
@@ -99,8 +119,8 @@ def bc_import_data():
                     df.columns = ['x', 'y']  # assuming the first column is x and second is y
                     st.session_state['df'] = df
 
-                    x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
-                    y_label = st.text_input("Enter the label for y", "Peakarea")
+                    x_label = st.text_input("What are the nominal X-values?", "Concentration[mg/L]")
+                    y_label = st.text_input("What are the corresponding measured responses?", "Peak area")
 
                     st.session_state['x_label'] = x_label
                     st.session_state['y_label'] = y_label
@@ -113,7 +133,7 @@ def bc_import_data():
                     st.session_state['model'] = model
                     st.session_state['y_pred'] = y_pred
 
-                    if st.button("Perform classic calibration"):
+                    if st.button("Import data and fit calibration model"):
                         st.success("Data imported and model trained successfully.")
 
             except Exception as e:
@@ -236,7 +256,7 @@ def bc_model_assumptions_normality():
         st.error("No data or model available. Please import data first.")
 
 def render_basic_calibration():
-    st.header("Basic Calibration Page")     
+    
     bc_section = st.sidebar.radio(
         "Navigate Basic Calibration",
         ["Import Data", "View Raw Data", "Calibration Plot", "Calibration Function", 
