@@ -12,13 +12,15 @@ from sklearn.metrics import r2_score, mean_squared_error
 import plotly.express as px
 from scipy.interpolate import make_interp_spline
 from scipy.stats import shapiro
+import scipy.stats as stats
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
-from statsmodels.compat import lzip
+import statsmodels.compat as lzip
 import statsmodels.stats.api as sms
-from statsmodels.stats.diagnostic import het_breuschpagan
 import statsmodels.stats.diagnostic as smd
 from statsmodels.regression.linear_model import OLS
+from statsmodels.stats.diagnostic import het_breuschpagan
+import statsmodels.stats.diagnostic as sm_diagnostic
 
 ###############################################################
 # Define page titles
@@ -37,17 +39,9 @@ def render_home():
     st.header("Home Page")
     st.write("Welcome to the Home page!")
 
-import streamlit as st
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-import statsmodels.api as sm
-import statsmodels.stats.api as sms
-import statsmodels.formula.api as smf
-import scipy.stats as stats
-import statsmodels.stats.diagnostic as sm_diagnostic
+###############################################################
+# Function to render basic calibration page
+###############################################################
 
 def bc_import_data():
     st.subheader("Import Data")
@@ -59,7 +53,6 @@ def bc_import_data():
                         "77.690938, 75.064287, 80.320072, 197.030149, 197.390646, 196.477779, "
                         "388.543543, 382.672992, 378.273372, 844.937521, 799.804932, 799.695752, "
                         "1996.367224, 1987.843702, 1969.842072, 3901.977880, 3786.692867, 3762.291002")
-
     x_label = st.text_input("Enter the label for x", "Concentration[mg/L]")
     y_label = st.text_input("Enter the label for y", "Peakarea")
     x_input = st.text_area("Enter x values (comma separated)", default_x_values)
@@ -70,9 +63,9 @@ def bc_import_data():
         y_values = [float(i) for i in y_input.split(',') if i.strip()]
 
         if len(x_values) == len(y_values):
-            bc_data = {'x': x_values, 'y': y_values}
-            bc_df = pd.DataFrame(bc_data)
-            st.session_state['df'] = bc_df
+            data = {'x': x_values, 'y': y_values}
+            df = pd.DataFrame(data)
+            st.session_state['df'] = df
             st.session_state['x_label'] = x_label
             st.session_state['y_label'] = y_label
 
@@ -88,22 +81,21 @@ def bc_import_data():
         else:
             st.error("The number of x values must be equal to the number of y values.")
 
-def view_raw_data():
-    st.subheader("View Raw Data")
+def bc_raw_data():
+    st.subheader("Calibration Data")
     if 'df' in st.session_state:
         st.dataframe(st.session_state['df'])
     else:
         st.error("No data available. Please import data first.")
 
-def calibration_plot():
+def bc_calibration_plot():
     st.subheader("Calibration Plot")
     if 'df' in st.session_state and 'model' in st.session_state:
         df = st.session_state['df']
         model = st.session_state['model']
         y_pred = st.session_state['y_pred']
         x_label = st.session_state['x_label']
-        y_label = st.session_state['y_label']
-
+        y_label = st.session_state['y_label']        
         fig, ax = plt.subplots()
         ax.plot(df['x'], df['y'], 'o', label='Data points')
         ax.plot(df['x'], y_pred, '-', label='Regression line')
@@ -115,43 +107,43 @@ def calibration_plot():
     else:
         st.error("No data or model available. Please import data first.")
 
-def calibration_function():
+def bc_calibration_function():
     st.subheader("Calibration Function")
     if 'model' in st.session_state:
         model = st.session_state['model']
         x_label = st.session_state['x_label']
         y_label = st.session_state['y_label']
-        st.markdown("**Formula of fitted linear regression:**")
+        st.markdown("Formula of fitted linear regression:")
         st.write(f"{y_label} = {model.coef_[0]} * {x_label} + {model.intercept_}")
-        st.markdown("**Slope of the fitted regression line:**")
+        st.markdown("Slope of the fitted regression line:")
         st.write(model.coef_[0])
-        st.markdown("**Intercept of the fitted regression line:**")
+        st.markdown("Intercept of the fitted regression line:")
         st.write(model.intercept_)
     else:
         st.error("No model available. Please import data first.")
 
-def model_evaluation():
+def bc_model_evaluation():
     st.subheader("Model evaluation")
     if 'model' in st.session_state:
         model = st.session_state['model']
         y = st.session_state['df']['y']
         y_pred = st.session_state['y_pred']
         n = len(y)
-        p = 1  # number of predictors
+        p = 1 # number of predictors
         r_squared = model.score(np.array(st.session_state['df']['x']).reshape(-1, 1), y)
         adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
         mse = mean_squared_error(y, y_pred)
         rmse = np.sqrt(mse)
-        st.markdown("**Adjusted R-squared**:")
+        st.markdown("Adjusted R-squared:")
         st.write(adjusted_r_squared)
-        st.markdown("**Mean Squared Error (MSE)**:")
+        st.markdown("Mean Squared Error (MSE):")
         st.write(mse)
-        st.markdown("**Root Mean Squared Error (RMSE)**:")
+        st.markdown("Root Mean Squared Error (RMSE):")
         st.write(rmse)
     else:
         st.error("No model available. Please import data first.")
 
-def model_assumptions_homoscedasticity():
+def bc_model_assumptions_homoscedasticity():
     st.subheader("Model Assumptions - Homoscedasticity")
     if 'df' in st.session_state and 'model' in st.session_state:
         df = st.session_state['df']
@@ -159,7 +151,6 @@ def model_assumptions_homoscedasticity():
         residuals = st.session_state['df']['y'] - st.session_state['y_pred']
         fit = smf.ols('y ~ x', data=df).fit()
         test_result_bp = sm_diagnostic.het_breuschpagan(fit.resid, fit.model.exog)
-
         st.markdown("**Breusch-Pagan Test for Homoscedasticity**")
         st.write("P-value:", test_result_bp[1])
         st.write("Degrees of freedom:", test_result_bp[2])
@@ -182,14 +173,13 @@ def model_assumptions_homoscedasticity():
         st.pyplot(fig_resid)
     else:
         st.error("No data or model available. Please import data first.")
-
-def model_assumptions_normality():
+   
+def bc_model_assumptions_normality():
     st.subheader("Model Assumptions - Normality of Residuals")
     if 'df' in st.session_state and 'model' in st.session_state:
         df = st.session_state['df']
         residuals = st.session_state['df']['y'] - st.session_state['y_pred']
         shapiro_test = stats.shapiro(residuals)
-
         st.markdown("**Shapiro-Wilk Test for Normality of Residuals**")
         st.write("P-value:", shapiro_test[1])
 
@@ -207,38 +197,35 @@ def model_assumptions_normality():
     else:
         st.error("No data or model available. Please import data first.")
 
-
 def render_basic_calibration():
-    st.header("Basic Calibration Page")
-
+    st.header("Basic Calibration Page")     
     bc_section = st.sidebar.radio(
         "Navigate Basic Calibration",
         ["Import Data", "View Raw Data", "Calibration Plot", "Calibration Function", 
-         "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"]
+        "Model evaluation", "Model Assumptions - Homoscedasticity", "Model Assumptions - Normality of Residuals"]
     )
 
     if bc_section == "Import Data":
         bc_import_data()
 
     elif bc_section == "View Raw Data":
-        view_raw_data()
+        bc_raw_data()
 
     elif bc_section == "Calibration Plot":
-        calibration_plot()
+        bc_calibration_plot()
 
     elif bc_section == "Calibration Function":
-        calibration_function()
+        bc_calibration_function()
 
     elif bc_section == "Model evaluation":
-        model_evaluation()
+        bc_model_evaluation()
 
     elif bc_section == "Model Assumptions - Homoscedasticity":
-        model_assumptions_homoscedasticity()
+        bc_model_assumptions_homoscedasticity()
 
     elif bc_section == "Model Assumptions - Normality of Residuals":
-        model_assumptions_normality()
-
-
+        bc_model_assumptions_normality()
+  
 
 ###############################################################
 # Function to render improved calibration page
