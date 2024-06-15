@@ -283,42 +283,170 @@ def bc_calibration_plot():
         st.error("No data or model available. Please import data first.")
 
 
+def lsqfity(X, Y):
+    """
+    Calculate a "MODEL-1" least squares fit.
 
-def bc_calibration_function():
-    st.subheader("Calibration Function")
+    The line is fit by MINIMIZING the residuals in Y only.
+
+    The equation of the line is:     Y = my * X + by.
+
+    Equations are from Bevington & Robinson (1992)
+    Data Reduction and Error Analysis for the Physical Sciences, 2nd Ed."
+    pp: 104, 108-109, 199.
+
+    Data are input and output as follows:
+
+    my, by, ry, smy, sby = lsqfity(X,Y)
+    X     =    x data (vector)
+    Y     =    y data (vector)
+    my    =    slope
+    by    =    y-intercept
+    ry    =    correlation coefficient
+    smy   =    standard deviation of the slope
+    sby   =    standard deviation of the y-intercept
+
+    """
+
+    X, Y = map(np.asanyarray, (X, Y))
+
+    # Determine the size of the vector.
+    n = len(X)
+
+    # Calculate the sums.
+
+    Sx = np.sum(X)
+    Sy = np.sum(Y)
+    Sx2 = np.sum(X ** 2)
+    Sxy = np.sum(X * Y)
+    Sy2 = np.sum(Y ** 2)
+
+    # Calculate re-used expressions.
+    num = n * Sxy - Sx * Sy
+    den = n * Sx2 - Sx ** 2
+
+    # Calculate my, by, ry, s2, smy and sby.
+    my = num / den
+    by = (Sx2 * Sy - Sx * Sxy) / den
+    ry = num / (np.sqrt(den) * np.sqrt(n * Sy2 - Sy ** 2))
+
+    diff = Y - by - my * X
+
+    s2 = np.sum(diff * diff) / (n - 2)
+    smy = np.sqrt(n * s2 / den)
+    sby = np.sqrt(Sx2 * s2 / den)
+
+    return my, by, ry, smy, sby
+
+def calculate_lod_loq(sigma, slope):
+    lod = 3.3 * sigma / slope
+    loq = 10 * sigma / slope
+    return lod, loq
+
+def bc_calibration_metrics():
     if 'model' in st.session_state:
         model = st.session_state['model']
-        x_label = st.session_state['x_label']
-        y_label = st.session_state['y_label']
-        st.markdown("Formula of fitted linear regression:")
-        st.write(f"{y_label} = {model.coef_[0]} * {x_label} + {model.intercept_}")
-        st.markdown("Slope of the fitted regression line:")
-        st.write(model.coef_[0])
-        st.markdown("Intercept of the fitted regression line:")
-        st.write(model.intercept_)
+        
+        with st.expander("Calibration Coefficients"):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("Slope of the fitted regression line:")
+            with col2:
+                st.write(model.coef_[0])
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("Intercept of the fitted regression line:")
+            with col2:
+                st.write(model.intercept_)
+        
+        with st.expander("Goodness of Fit"):
+            y = st.session_state['df']['y']
+            y_pred = st.session_state['y_pred']
+            n = len(y)
+            p = 1  # number of predictors
+            r_squared = model.score(np.array(st.session_state['df']['x']).reshape(-1, 1), y)
+            adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
+            mse = mean_squared_error(y, y_pred)
+            rmse = np.sqrt(mse)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("Adjusted R-squared:")
+            with col2:
+                st.write(adjusted_r_squared)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("Mean Squared Error (MSE):")
+            with col2:
+                st.write(mse)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("Root Mean Squared Error (RMSE):")
+            with col2:
+                st.write(rmse)
+        
+        with st.expander("Sensitivity - LOD and LOQ"):
+            st.markdown("""
+                According to the International Conference on Harmonization (ICH) guidelines, the limit of detection (LOD) 
+                is determined using the relation <b>LOD = 3.3 * (σ/S)</b> where <b>σ</b> is the standard deviation 
+                of the response and <b>S</b> is the slope of the calibration curve. The standard deviation of the response 
+                can be obtained either by measuring the standard deviation of the blank response, by calculating the 
+                residual standard deviation of the regression line, by calculating the standard deviation of the y-intercept 
+                of the regression line, or by calculating <b>S<sub>y/x</sub></b>, i.e., the standard error of the estimate.
+            """, unsafe_allow_html=True)
+
+            X = st.session_state['df']['x']
+            Y = st.session_state['df']['y']
+            slope = model.coef_[0]
+
+            method = st.radio(
+                "Select method to estimate σ (standard deviation):",
+                ("Standard deviation of blank response", 
+                 "Residual standard deviation of the regression line",
+                 "Standard deviation of the y-intercept of the regression line",
+                 "Standard error of estimate"))
+
+            if method == "Standard deviation of blank response":
+                blank_y_values = st.text_area("Enter y-values of blank response (comma separated):")
+                if blank_y_values:
+                    blank_y = [float(i) for i in blank_y_values.split(',') if i.strip()]
+                    if len(blank_y) >= 5:
+                        sigma = np.std(blank_y)
+                    else:
+                        st.error("Please enter at least 5 blank y-values.")
+                else:
+                    st.error("Please enter the y-values of blank response.")
+
+            elif method == "Residual standard deviation of the regression line":
+                residuals = Y - model.predict(X.values.reshape(-1, 1))
+                sigma = np.std(residuals)
+
+            elif method == "Standard deviation of the y-intercept of the regression line":
+                _, _, _, _, sby = lsqfity(X, Y)
+                sigma = sby
+
+            elif method == "Standard error of estimate":
+                residuals = Y - model.predict(X.values.reshape(-1, 1))
+                sigma = np.sqrt(np.sum(residuals ** 2) / (len(Y) - 2))
+
+            if st.button("Estimate LOD and LOQ"):
+                lod, loq = calculate_lod_loq(sigma, slope)
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("Limit of Detection (LOD):")
+                with col2:
+                    st.write(lod)
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("Limit of Quantification (LOQ):")
+                with col2:
+                    st.write(loq)
     else:
         st.error("No model available. Please import data first.")
 
-def bc_model_evaluation():
-    st.subheader("Model Evaluation")
-    if 'model' in st.session_state:
-        model = st.session_state['model']
-        y = st.session_state['df']['y']
-        y_pred = st.session_state['y_pred']
-        n = len(y)
-        p = 1  # number of predictors
-        r_squared = model.score(np.array(st.session_state['df']['x']).reshape(-1, 1), y)
-        adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
-        mse = mean_squared_error(y, y_pred)
-        rmse = np.sqrt(mse)
-        st.markdown("Adjusted R-squared:")
-        st.write(adjusted_r_squared)
-        st.markdown("Mean Squared Error (MSE):")
-        st.write(mse)
-        st.markdown("Root Mean Squared Error (RMSE):")
-        st.write(rmse)
-    else:
-        st.error("No model available. Please import data first.")
 
 def bc_model_assumptions():
     st.header("Model Assumptions")
@@ -382,10 +510,10 @@ def render_basic_calibration():
         if st.session_state.get('model_trained'):
             bc_section = st.sidebar.radio(
                 "",
-                ["Import Data", "View Data", "Calibration Plot", "Calibration Function", 
-                "Model Evaluation", "Model Assumptions"],
-                index=["Import Data", "View Data", "Calibration Plot", "Calibration Function", 
-                       "Model Evaluation", "Model Assumptions"].index(st.session_state.get('current_section', "Import Data"))
+                ["Import Data", "View Data", "Calibration Plot", "Calibration Metrics", 
+                "Model Assumptions"],
+                index=["Import Data", "View Data", "Calibration Plot", "Calibration Metrics", 
+                       "Model Assumptions"].index(st.session_state.get('current_section', "Import Data"))
             )
         else:
             bc_section = st.sidebar.radio(
@@ -408,11 +536,8 @@ def render_basic_calibration():
     elif bc_section == "Calibration Plot":
         bc_calibration_plot()
 
-    elif bc_section == "Calibration Function":
-        bc_calibration_function()
-
-    elif bc_section == "Model Evaluation":
-        bc_model_evaluation()
+    elif bc_section == "Calibration Metrics":
+        bc_calibration_metrics()
 
     elif bc_section == "Model Assumptions":
         bc_model_assumptions()
