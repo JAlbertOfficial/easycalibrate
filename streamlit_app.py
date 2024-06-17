@@ -21,6 +21,10 @@ import statsmodels.stats.diagnostic as smd
 from statsmodels.regression.linear_model import OLS
 from statsmodels.stats.diagnostic import het_breuschpagan
 import statsmodels.stats.diagnostic as sm_diagnostic
+import plotly.express as px
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
 
 ###############################################################
 # Define page titles
@@ -447,63 +451,102 @@ def bc_calibration_metrics():
     else:
         st.error("No model available. Please import data first.")
 
-
 def bc_model_assumptions():
     st.header("Model Assumptions")
     
-    # Homoscedasticity
-    st.subheader("Homoscedasticity")
+    st.write("""
+        Calibration functions are linear regression models, and these models need to meet certain assumptions to ensure their validity.
+        Two critical assumptions are homoscedasticity and normality of residuals. Homoscedasticity means that the variance of the residuals 
+        is constant across all levels of the independent variable, ensuring that the model's predictions are reliable and independent of the value of x.
+        Normality of residuals indicates that the residuals (differences between observed and predicted values) follow a normal distribution, which is crucial 
+        for making valid inferences from the model. Ensuring these assumptions are met is essential because:
+    """)
+
     if 'df' in st.session_state and 'model' in st.session_state:
         df = st.session_state['df']
         model = st.session_state['model']
         residuals = st.session_state['df']['y'] - st.session_state['y_pred']
         fit = smf.ols('y ~ x', data=df).fit()
         test_result_bp = sm_diagnostic.het_breuschpagan(fit.resid, fit.model.exog)
-        st.markdown("**Breusch-Pagan Test for Homoscedasticity**")
-        st.write("P-value:", test_result_bp[1])
-        st.write("Degrees of freedom:", test_result_bp[2])
-        st.write("F-statistic:", test_result_bp[3])
-
-        if test_result_bp[1] > 0.05:
-            st.write("The Breusch-Pagan test for Homoscedasticity is not significant (p > 0.05), indicating that the residuals have constant variance (homoscedasticity).")
-        else:
-            st.write("The Breusch-Pagan test for Homoscedasticity is significant (p <= 0.05), suggesting that the residuals may not have constant variance (heteroscedasticity).")
-            st.write("Considering the potential violation of homoscedasticity assumption, further diagnostics or transformations may be necessary.")
-            st.write("The distribution of residuals and the test result should be visually verified with the following residual plots.")
-
-        st.markdown("**Residual plots**")
-        fig_resid, ax_resid = plt.subplots()
-        ax_resid.scatter(df['x'], residuals)
-        ax_resid.axhline(y=0, color='black', linestyle='--')
-        ax_resid.set_xlabel(st.session_state['x_label'])
-        ax_resid.set_ylabel("Residuals")
-        ax_resid.set_title("Residual plot")
-        st.pyplot(fig_resid)
-    else:
-        st.error("No data or model available. Please import data first.")
-    
-    # Normality of Residuals
-    st.subheader("Normality of Residuals")
-    if 'df' in st.session_state and 'model' in st.session_state:
-        df = st.session_state['df']
-        residuals = st.session_state['df']['y'] - st.session_state['y_pred']
         shapiro_test = stats.shapiro(residuals)
-        st.markdown("**Shapiro-Wilk Test for Normality of Residuals**")
-        st.write("P-value:", shapiro_test[1])
 
-        if shapiro_test[1] > 0.05:
-            st.write("The Shapiro-Wilk test for Normality of Residuals is not significant (p > 0.05), indicating that the residuals are normally distributed.")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**Homoscedasticity**")
+        with col2:
+            st.markdown("**Normality**")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            with st.expander("Breusch-Pagan Test for Homoscedasticity", expanded=True):
+                p_value_bp = round(test_result_bp[1], 3) if test_result_bp[1] >= 0.001 else "<0.001"
+                f_value_bp = round(test_result_bp[3], 3) if test_result_bp[3] >= 0.001 else "<0.001"
+                st.write(f"p = {p_value_bp}")
+                st.write(f"F = {f_value_bp}")
+        with col2:
+            with st.expander("Shapiro-Wilk Test for Normality of Residuals", expanded=True):
+                p_value_sw = round(shapiro_test[1], 3) if shapiro_test[1] >= 0.001 else "<0.001"
+                w_value_sw = round(shapiro_test[0], 3) if shapiro_test[0] >= 0.001 else "<0.001"
+                st.write(f"p = {p_value_sw}")
+                st.write(f"W = {w_value_sw}")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            with st.expander("Residual plot", expanded=True):
+                fig_resid = px.scatter(x=df['x'], y=residuals, labels={'x': st.session_state['x_label'], 'y': "Residuals"}, title="Residual Plot")
+                fig_resid.add_shape(type='line', x0=df['x'].min(), y0=0, x1=df['x'].max(), y1=0, line=dict(color='black', dash='dash'))
+                st.plotly_chart(fig_resid, use_container_width=True)
+
+        with col2:
+            with st.expander("Q-Q plot of residuals", expanded=True):
+                qq_plot = sm.qqplot(residuals, line='s')
+                qq_plot_fig = go.Figure()
+                qq_plot_data = qq_plot.gca().get_lines()
+                
+                qq_x = qq_plot_data[0].get_xdata()
+                qq_y = qq_plot_data[0].get_ydata()
+                qq_line_x = qq_plot_data[1].get_xdata()
+                qq_line_y = qq_plot_data[1].get_ydata()
+                
+                qq_plot_fig.add_trace(go.Scatter(x=qq_x, y=qq_y, mode='markers', name='Q-Q Plot'))
+                qq_plot_fig.add_trace(go.Scatter(x=qq_line_x, y=qq_line_y, mode='lines', name='Q-Q Line'))
+
+                qq_plot_fig.update_layout(title="Q-Q plot of residuals", xaxis_title="Theoretical Quantiles", yaxis_title="Sample Quantiles", showlegend=False)
+                st.plotly_chart(qq_plot_fig, use_container_width=True)
+
+        bp_significant = test_result_bp[1] <= 0.05
+        sw_significant = shapiro_test[1] <= 0.05
+
+        bp_text = f"<span style='background-color: {'#90EE90' if not bp_significant else '#FFCCCB'}'>{'Homoscedasticity' if not bp_significant else 'Heteroscedasticity'}</span>"
+        sw_text = f"<span style='background-color: {'#90EE90' if not sw_significant else '#FFCCCB'}'>{'Normality' if not sw_significant else 'Non-Normality'}</span>"
+
+        # Sentence 1
+        st.markdown(f"Breusch-Pagan test suggests {bp_text} (p = {p_value_bp}, F = {f_value_bp}) and Shapiro-Wilk Test suggests {sw_text} (p = {p_value_sw}, W = {w_value_sw}).", unsafe_allow_html=True)
+
+        # Sentence 2a and 2b
+        if bp_significant or sw_significant:
+            st.write("""
+                Based on the null hypothesis significance tests, the assumptions for a linear calibration model are not met. 
+                If these assumptions are violated, the accuracy of the calibration line can be significantly affected, especially in the lower range of the calibration.
+            """)
         else:
-            st.write("The Shapiro-Wilk test for Normality of Residuals is significant (p <= 0.05), suggesting that the residuals may not be normally distributed.")
-            st.write("Considering the potential violation of normality assumption, further diagnostics or transformations may be necessary.")
-            st.write("The distribution of residuals and test result should be visually verified with the following Q-Q plot.")
-        st.markdown("**Q-Q plot of residuals**")
-        fig_qq, ax_qq = plt.subplots()
-        sm.qqplot(residuals, line='s', ax=ax_qq)
-        ax_qq.set_title("Q-Q plot of residuals")
-        st.pyplot(fig_qq)
+            st.write("""
+                Based on the null hypothesis significance tests, the assumptions for a linear calibration model are met. 
+                However, it is essential to visually verify these results with the residual plot and Q-Q plot.
+            """)
+
+        # Sentence 3a and 3b
+        st.write("""
+            To determine whether the accuracy of the model decreases at the lower end of the calibration range, it is important to examine the relative errors (percentage difference from the true x-values) at smaller x-values.
+            A visual representation of this phenomenon can be found in the relative error graph on the following navigation tab "Relative Errors".
+        """)
+
     else:
         st.error("No data or model available. Please import data first.")
+
 
 def render_basic_calibration():
     if st.session_state.get('data_imported'):
