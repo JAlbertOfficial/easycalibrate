@@ -25,6 +25,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
+import streamlit as st
+from streamlit_option_menu import option_menu
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import plotly.express as px
+import plotly.graph_objects as go
+from scipy.stats import pearsonr, spearmanr, ttest_ind
+import statsmodels.api as sm
 
 ###############################################################
 # Define page titles
@@ -454,6 +463,7 @@ def bc_calibration_metrics():
 def bc_model_assumptions():
     st.header("Model Assumptions")
     
+    st.subheader("Background")
     st.write("""
         Calibration functions are linear regression models, and these models need to meet certain assumptions to ensure their validity.
         Two critical assumptions are homoscedasticity and normality of residuals. Homoscedasticity means that the variance of the residuals 
@@ -466,96 +476,247 @@ def bc_model_assumptions():
         df = st.session_state['df']
         model = st.session_state['model']
         residuals = st.session_state['df']['y'] - st.session_state['y_pred']
+        df['residuals'] = residuals
         fit = smf.ols('y ~ x', data=df).fit()
         test_result_bp = sm_diagnostic.het_breuschpagan(fit.resid, fit.model.exog)
         shapiro_test = stats.shapiro(residuals)
 
-        col1, col2 = st.columns(2)
+        st.subheader("Testing of Model Assumptions")
+        
+        with st.expander("Breusch-Pagan Test for Homoscedasticity", expanded=True):
+            bp_significant = test_result_bp[1] <= 0.05
+            bp_text = f"<span style='background-color: {'#90EE90' if not bp_significant else '#FFCCCB'}'>{'Homoscedasticity' if not bp_significant else 'Heteroscedasticity'}</span>"
+            p_value_bp = "<0.001" if test_result_bp[1] < 0.001 else f"{test_result_bp[1]:.3f}"
+            f_value_bp = "<0.001" if test_result_bp[3] < 0.001 else f"{test_result_bp[3]:.3f}"
+            st.markdown(f"Breusch-Pagan test suggests {bp_text} (p = {p_value_bp}, F = {f_value_bp}).", unsafe_allow_html=True)
 
-        with col1:
-            st.markdown("**Homoscedasticity**")
-        with col2:
-            st.markdown("**Normality**")
+        with st.expander("Shapiro-Wilk Test for Normality of Residuals", expanded=True):
+            sw_significant = shapiro_test[1] <= 0.05
+            sw_text = f"<span style='background-color: {'#90EE90' if not sw_significant else '#FFCCCB'}'>{'Normality' if not sw_significant else 'Non-Normality'}</span>"
+            p_value_sw = "<0.001" if shapiro_test[1] < 0.001 else f"{shapiro_test[1]:.3f}"
+            w_value_sw = "<0.001" if shapiro_test[0] < 0.001 else f"{shapiro_test[0]:.3f}"
+            st.markdown(f"Shapiro-Wilk Test suggests {sw_text} (p = {p_value_sw}, W = {w_value_sw}).", unsafe_allow_html=True)
 
-        col1, col2 = st.columns(2)
+        st.subheader("Diagnostic Plots")
 
-        with col1:
-            with st.expander("Breusch-Pagan Test for Homoscedasticity", expanded=True):
-                p_value_bp = round(test_result_bp[1], 3) if test_result_bp[1] >= 0.001 else "<0.001"
-                f_value_bp = round(test_result_bp[3], 3) if test_result_bp[3] >= 0.001 else "<0.001"
-                st.write(f"p = {p_value_bp}")
-                st.write(f"F = {f_value_bp}")
-        with col2:
-            with st.expander("Shapiro-Wilk Test for Normality of Residuals", expanded=True):
-                p_value_sw = round(shapiro_test[1], 3) if shapiro_test[1] >= 0.001 else "<0.001"
-                w_value_sw = round(shapiro_test[0], 3) if shapiro_test[0] >= 0.001 else "<0.001"
-                st.write(f"p = {p_value_sw}")
-                st.write(f"W = {w_value_sw}")
+        with st.expander("Residual Plot", expanded=False):
+            st.markdown("**Labels**")
+            x_label_default = st.session_state['x_label']
+            y_label_default = "Residuals"
+            title_default = "Residual Plot"
 
-        col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2)
 
-        with col1:
-            with st.expander("Residual plot", expanded=True):
-                fig_resid = px.scatter(x=df['x'], y=residuals, labels={'x': st.session_state['x_label'], 'y': "Residuals"}, title="Residual Plot")
-                fig_resid.add_shape(type='line', x0=df['x'].min(), y0=0, x1=df['x'].max(), y1=0, line=dict(color='black', dash='dash'))
-                st.plotly_chart(fig_resid, use_container_width=True)
+            with col1:
+                show_bp_p = st.checkbox("Show p-value (Breusch-Pagan)", value=True)
+                if show_bp_p:
+                    bp_p_decimals = st.number_input("Decimal places for p-value (Breusch-Pagan)", min_value=1, max_value=10, value=3, key="bp_p_decimals")
 
-        with col2:
-            with st.expander("Q-Q plot of residuals", expanded=True):
-                qq_plot = sm.qqplot(residuals, line='s')
-                qq_plot_fig = go.Figure()
-                qq_plot_data = qq_plot.gca().get_lines()
-                
-                qq_x = qq_plot_data[0].get_xdata()
-                qq_y = qq_plot_data[0].get_ydata()
-                qq_line_x = qq_plot_data[1].get_xdata()
-                qq_line_y = qq_plot_data[1].get_ydata()
-                
-                qq_plot_fig.add_trace(go.Scatter(x=qq_x, y=qq_y, mode='markers', name='Q-Q Plot'))
-                qq_plot_fig.add_trace(go.Scatter(x=qq_line_x, y=qq_line_y, mode='lines', name='Q-Q Line'))
+                x_label = st.text_input("X-axis label:", x_label_default, key="resid_x_label")
 
-                qq_plot_fig.update_layout(title="Q-Q plot of residuals", xaxis_title="Theoretical Quantiles", yaxis_title="Sample Quantiles", showlegend=False)
-                st.plotly_chart(qq_plot_fig, use_container_width=True)
+            with col2:
+                show_bp_f = st.checkbox("Show F-value (Breusch-Pagan)", value=True)
+                if show_bp_f:
+                    bp_f_decimals = st.number_input("Decimal places for F-value (Breusch-Pagan)", min_value=1, max_value=10, value=3, key="bp_f_decimals")
 
-        bp_significant = test_result_bp[1] <= 0.05
-        sw_significant = shapiro_test[1] <= 0.05
+                y_label = st.text_input("Y-axis label:", y_label_default, key="resid_y_label")
 
-        bp_text = f"<span style='background-color: {'#90EE90' if not bp_significant else '#FFCCCB'}'>{'Homoscedasticity' if not bp_significant else 'Heteroscedasticity'}</span>"
-        sw_text = f"<span style='background-color: {'#90EE90' if not sw_significant else '#FFCCCB'}'>{'Normality' if not sw_significant else 'Non-Normality'}</span>"
+            title = st.text_input("Plot title:", title_default, key="resid_title")
 
-        # Sentence 1
-        st.markdown(f"Breusch-Pagan test suggests {bp_text} (p = {p_value_bp}, F = {f_value_bp}) and Shapiro-Wilk Test suggests {sw_text} (p = {p_value_sw}, W = {w_value_sw}).", unsafe_allow_html=True)
+            st.markdown("**Size**")
+            width = st.slider("Plot width (cm)", min_value=3, max_value=24, value=14, key="resid_width")
+            height = st.slider("Plot height (cm)", min_value=3, max_value=24, value=12, key="resid_height")
 
-        # Sentence 2a and 2b
+            st.markdown("**Colors and Shapes**")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                point_color = st.color_picker("Pick a color for points", "#1f77b4", key="resid_point_color")
+                line_color = st.color_picker("Pick a color for the line", "#ff7f0e", key="resid_line_color")
+
+            with col2:
+                markers = {
+                    'Circle': 'circle',
+                    'Square': 'square',
+                    'Diamond': 'diamond',
+                    'Up Triangle': 'triangle-up',
+                    'Down Triangle': 'triangle-down',
+                    'Left Triangle': 'triangle-left',
+                    'Right Triangle': 'triangle-right',
+                    'Pentagon': 'pentagon',
+                    'Hexagon': 'hexagon'
+                }
+
+                marker_labels = list(markers.keys())
+                marker_display = ["● Circle", "■ Square", "◆ Diamond", "▲ Up Triangle", "▼ Down Triangle", "◀ Left Triangle", "▶ Right Triangle", "⬟ Pentagon", "⬢ Hexagon"]
+                selected_marker_label = st.selectbox("Select marker style for points", marker_display, key="resid_marker_display")
+                selected_marker = markers[marker_labels[marker_display.index(selected_marker_label)]]
+
+                line_styles = {
+                    'Solid': 'solid',
+                    'Dashed': 'dash',
+                    'Dash-dot': 'dashdot',
+                    'Dotted': 'dot'
+                }
+
+                line_style_labels = list(line_styles.keys())
+                line_style_display = ["Solid", "Dashed", "Dash-dot", "Dotted"]
+                selected_line_style_label = st.selectbox("Select line style", line_style_display, key="resid_line_style_display")
+                selected_line_style = line_styles[selected_line_style_label]
+
+        fig_resid = px.scatter(x=df['x'], y=residuals, labels={'x': x_label, 'y': y_label}, title=title)
+        fig_resid.update_traces(marker=dict(color=point_color, symbol=selected_marker))
+        fig_resid.add_shape(type='line', x0=df['x'].min(), y0=0, x1=df['x'].max(), y1=0, line=dict(color='black', dash='dash'))
+        
+        mean_residuals = df.groupby('x')['residuals'].mean().reset_index()
+        mean_residuals = mean_residuals.sort_values('x')
+        fig_resid.add_trace(go.Scatter(x=mean_residuals['x'], y=mean_residuals['residuals'], mode='lines', name='Mean Residuals', line=dict(color=line_color, dash=selected_line_style)))
+
+        annotation_text = ""
+        if show_bp_p:
+            bp_p_threshold = 10**(-bp_p_decimals)
+            if test_result_bp[1] < bp_p_threshold:
+                annotation_text += f"p (Breusch-Pagan) < {bp_p_threshold:.{bp_p_decimals}f}<br>"
+            else:
+                annotation_text += f"p (Breusch-Pagan) = {test_result_bp[1]:.{bp_p_decimals}f}<br>"
+        if show_bp_f:
+            bp_f_threshold = 10**(-bp_f_decimals)
+            if test_result_bp[3] < bp_f_threshold:
+                annotation_text += f"F (Breusch-Pagan) < {bp_f_threshold:.{bp_f_decimals}f}"
+            else:
+                annotation_text += f"F (Breusch-Pagan) = {test_result_bp[3]:.{bp_f_decimals}f}"
+        
+        if show_bp_p or show_bp_f:
+            fig_resid.add_annotation(
+                x=0.95, y=0.05, showarrow=False, text=annotation_text, xref="paper", yref="paper", 
+                xanchor="right", yanchor="bottom", align="right", bgcolor="white", font=dict(color='black')
+            )
+
+        fig_resid.update_layout(showlegend=False)
+        st.plotly_chart(fig_resid, use_container_width=True)
+
+        with st.expander("Q-Q Plot of Residuals", expanded=False):
+            st.markdown("**Labels**")
+            x_label_default = "Theoretical Quantiles"
+            y_label_default = "Sample Quantiles"
+            title_default = "Q-Q plot of residuals"
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                show_sw_p = st.checkbox("Show p-value (Shapiro-Wilk)", value=True)
+                if show_sw_p:
+                    sw_p_decimals = st.number_input("Decimal places for p-value (Shapiro-Wilk)", min_value=1, max_value=10, value=3, key="sw_p_decimals")
+
+                x_label = st.text_input("X-axis label:", x_label_default, key="qq_x_label")
+
+            with col2:
+                show_sw_w = st.checkbox("Show W-value (Shapiro-Wilk)", value=True)
+                if show_sw_w:
+                    sw_w_decimals = st.number_input("Decimal places for W-value (Shapiro-Wilk)", min_value=1, max_value=10, value=3, key="sw_w_decimals")
+
+                y_label = st.text_input("Y-axis label:", y_label_default, key="qq_y_label")
+
+            title = st.text_input("Plot title:", title_default, key="qq_title")
+
+            st.markdown("**Size**")
+            width = st.slider("Plot width (cm)", min_value=3, max_value=24, value=14, key="qq_width")
+            height = st.slider("Plot height (cm)", min_value=3, max_value=24, value=12, key="qq_height")
+
+            st.markdown("**Colors and Shapes**")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                point_color = st.color_picker("Pick a color for points", "#1f77b4", key="qq_point_color")
+                line_color = st.color_picker("Pick a color for the line", "#ff7f0e", key="qq_line_color")
+
+            with col2:
+                markers = {
+                    'Circle': 'circle',
+                    'Square': 'square',
+                    'Diamond': 'diamond',
+                    'Up Triangle': 'triangle-up',
+                    'Down Triangle': 'triangle-down',
+                    'Left Triangle': 'triangle-left',
+                    'Right Triangle': 'triangle-right',
+                    'Pentagon': 'pentagon',
+                    'Hexagon': 'hexagon'
+                }
+
+                marker_labels = list(markers.keys())
+                marker_display = ["● Circle", "■ Square", "◆ Diamond", "▲ Up Triangle", "▼ Down Triangle", "◀ Left Triangle", "▶ Right Triangle", "⬟ Pentagon", "⬢ Hexagon"]
+                selected_marker_label = st.selectbox("Select marker style for points", marker_display, key="qq_marker_display")
+                selected_marker = markers[marker_labels[marker_display.index(selected_marker_label)]]
+
+                line_styles = {
+                    'Solid': 'solid',
+                    'Dashed': 'dash',
+                    'Dash-dot': 'dashdot',
+                    'Dotted': 'dot'
+                }
+
+                line_style_labels = list(line_styles.keys())
+                line_style_display = ["Solid", "Dashed", "Dash-dot", "Dotted"]
+                selected_line_style_label = st.selectbox("Select line style", line_style_display, key="qq_line_style_display")
+                selected_line_style = line_styles[selected_line_style_label]
+
+        qq_plot = sm.qqplot(residuals, line='s')
+        qq_plot_fig = go.Figure()
+        qq_plot_data = qq_plot.gca().get_lines()
+        
+        qq_x = qq_plot_data[0].get_xdata()
+        qq_y = qq_plot_data[0].get_ydata()
+        qq_line_x = qq_plot_data[1].get_xdata()
+        qq_line_y = qq_plot_data[1].get_ydata()
+        
+        qq_plot_fig.add_trace(go.Scatter(x=qq_x, y=qq_y, mode='markers', name='Q-Q Plot', marker=dict(color=point_color, symbol=selected_marker)))
+        qq_plot_fig.add_trace(go.Scatter(x=qq_line_x, y=qq_line_y, mode='lines', name='Q-Q Line', line=dict(color=line_color, dash=selected_line_style)))
+
+        annotation_text = ""
+        if show_sw_p:
+            sw_p_threshold = 10**(-sw_p_decimals)
+            if shapiro_test[1] < sw_p_threshold:
+                annotation_text += f"p (Shapiro-Wilk) < {sw_p_threshold:.{sw_p_decimals}f}<br>"
+            else:
+                annotation_text += f"p (Shapiro-Wilk) = {shapiro_test[1]:.{sw_p_decimals}f}<br>"
+        if show_sw_w:
+            sw_w_threshold = 10**(-sw_w_decimals)
+            if shapiro_test[0] < sw_w_threshold:
+                annotation_text += f"W (Shapiro-Wilk) < {sw_w_threshold:.{sw_w_decimals}f}"
+            else:
+                annotation_text += f"W (Shapiro-Wilk) = {shapiro_test[0]:.{sw_w_decimals}f}"
+        
+        if show_sw_p or show_sw_w:
+            qq_plot_fig.add_annotation(
+                x=0.95, y=0.05, showarrow=False, text=annotation_text, xref="paper", yref="paper", 
+                xanchor="right", yanchor="bottom", align="right", bgcolor="white", font=dict(color='black')
+            )
+
+        qq_plot_fig.update_layout(showlegend=False, title=title, xaxis_title=x_label, yaxis_title=y_label)
+        st.plotly_chart(qq_plot_fig, use_container_width=True)
+
+        st.subheader("Conclusion")
+        
         if bp_significant or sw_significant:
-            st.write("""
+            st.markdown("""
+                <div style='background-color: #FFCCCB; padding: 10px; border-radius: 5px;'>
                 Based on the null hypothesis significance tests, the assumptions for a linear calibration model are not met. 
                 If these assumptions are violated, the accuracy of the calibration line can be significantly affected, especially in the lower range of the calibration.
-            """)
+                To determine whether the accuracy of the model decreases at the lower end of the calibration range, it is important to examine the relative errors (percentage difference from the true x-values) at smaller x-values. 
+                </div>
+            """, unsafe_allow_html=True)
         else:
-            st.write("""
+            st.markdown("""
+                <div style='background-color: #90EE90; padding: 10px; border-radius: 5px;'>
                 Based on the null hypothesis significance tests, the assumptions for a linear calibration model are met. 
                 However, it is essential to visually verify these results with the residual plot and Q-Q plot.
-            """)
-
-        # Sentence 3a and 3b
-        st.write("""
-            To determine whether the accuracy of the model decreases at the lower end of the calibration range, it is important to examine the relative errors (percentage difference from the true x-values) at smaller x-values.
-            A visual representation of this phenomenon can be found in the relative error graph on the following navigation tab "Relative Errors".
-        """)
-
+                To determine whether the accuracy of the model decreases at the lower end of the calibration range, it is important to examine the relative errors (percentage difference from the true x-values) at smaller x-values.
+                </div>
+            """, unsafe_allow_html=True)
+        
     else:
         st.error("No data or model available. Please import data first.")
 
-import streamlit as st
-from streamlit_option_menu import option_menu
-import pandas as pd
-import numpy as np
-from sklearn.linear_model import LinearRegression
-import plotly.express as px
-import plotly.graph_objects as go
-from scipy.stats import pearsonr, spearmanr, ttest_ind
-import statsmodels.api as sm
 
 def bc_relative_errors():
     st.header("Relative Errors")
