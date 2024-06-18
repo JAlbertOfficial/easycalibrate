@@ -459,7 +459,7 @@ def bc_model_assumptions():
         Two critical assumptions are homoscedasticity and normality of residuals. Homoscedasticity means that the variance of the residuals 
         is constant across all levels of the independent variable, ensuring that the model's predictions are reliable and independent of the value of x.
         Normality of residuals indicates that the residuals (differences between observed and predicted values) follow a normal distribution, which is crucial 
-        for making valid inferences from the model. Ensuring these assumptions are met is essential because:
+        for making valid inferences from the model.
     """)
 
     if 'df' in st.session_state and 'model' in st.session_state:
@@ -547,6 +547,207 @@ def bc_model_assumptions():
     else:
         st.error("No data or model available. Please import data first.")
 
+import streamlit as st
+from streamlit_option_menu import option_menu
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import plotly.express as px
+import plotly.graph_objects as go
+from scipy.stats import pearsonr, spearmanr, ttest_ind
+import statsmodels.api as sm
+
+def bc_relative_errors():
+    st.header("Relative Errors")
+    
+    if 'df' in st.session_state and 'model' in st.session_state:
+        df = st.session_state['df']
+        model = st.session_state['model']
+        
+        x_calc = (df['y'] - model.intercept_) / model.coef_[0]
+        relative_error = 100 * (x_calc - df['x']) / df['x']
+        df['relative_error'] = relative_error
+
+        sre = np.abs(df['relative_error']).sum()
+        mre = np.abs(df['relative_error']).mean()
+        pearson_corr, _ = pearsonr(df['x'], np.abs(df['relative_error']))
+        spearman_corr, _ = spearmanr(df['x'], np.abs(df['relative_error']))
+        
+        lower_half_error = np.abs(df[df['x'] <= df['x'].median()]['relative_error'])
+        upper_half_error = np.abs(df[df['x'] > df['x'].median()]['relative_error'])
+
+        lower_mean = lower_half_error.mean()
+        upper_mean = upper_half_error.mean()
+
+        t_stat, p_value = ttest_ind(lower_half_error, upper_half_error, equal_var=False)
+
+        if abs(pearson_corr) >= 0.50:
+            pearson_text = "strong"
+        elif 0.30 <= abs(pearson_corr) < 0.50:
+            pearson_text = "moderate"
+        else:
+            pearson_text = "low"
+
+        if abs(spearman_corr) >= 0.50:
+            spearman_text = "strong"
+        elif 0.30 <= abs(spearman_corr) < 0.50:
+            spearman_text = "moderate"
+        else:
+            spearman_text = "low"
+
+        if p_value > 0.05:
+            significance_text = f"""
+            The relative error in the lower half of the calibration is {lower_mean:.2f}% and {upper_mean:.2f}% in the upper half of the calibration. 
+            There is no significant difference in the relative errors between the lower and upper halves of the calibration (Two-Sample T-test, t = {t_stat:.3f}, p = {p_value:.3f}).
+            """
+        else:
+            if lower_mean > upper_mean:
+                significance_text = f"""
+                The mean relative error in the lower half of the calibration ({lower_mean:.2f}%) is significantly higher than in the upper half ({upper_mean:.2f}%) (Two-Sample T-test, t = {t_stat:.3f}, p = {p_value:.3f}).
+                """
+            else:
+                significance_text = f"""
+                The mean relative error in the lower half of the calibration ({lower_mean:.2f}%) is significantly lower than in the upper half ({upper_mean:.2f}%) (Two-Sample T-test, t = {t_stat:.3f}, p = {p_value:.3f}).
+                """
+
+        st.subheader("Background")
+        st.write("""
+        The analysis of relative errors is essential in calibration studies to understand how the model performs across different concentration levels.
+        By examining the relative errors, we can assess whether the model's predictions are consistently accurate or if there are specific ranges where 
+        the model tends to overestimate or underestimate the actual values.
+        """)
+
+        st.subheader("Analysis of Relative Errors")
+
+        with st.expander("1. How much do the estimated x-values deviate from the actual x-values?", expanded=False):
+            st.write("""
+            - With the basic calibration model, the estimated x-value deviates by ±30% from the actual x-value.
+            """)
+
+        with st.expander("2. Is the calibration function less accurate in the lower range of the calibration?", expanded=False):
+            st.write(f"""
+            - {significance_text.strip()}
+            """)
+
+        with st.expander("3. Is there a linear relationship between the size of the x-value and the size of the relative estimation error?", expanded=False):
+            st.write(f"""
+            - The Pearson correlation of {pearson_corr:.3f} indicates a {pearson_text} linear relationship between x and the relative estimation error for x.
+            """)
+
+        with st.expander("4. Is there a non-linear relationship between the size of the x-value and the size of the relative estimation error?", expanded=False):
+            st.write(f"""
+            - The Spearman correlation of {spearman_corr:.3f} indicates a {spearman_text} non-linear relationship between x and the relative estimation error for x.
+            """)
+
+        st.subheader("Relative Error Plot")
+        
+        with st.expander("Labels", expanded=False):
+            x_label_default = st.session_state['x_label']
+            y_label_default = "Relative Error (%)"
+            title_default = "Relative Error Plot"
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                show_sre = st.checkbox("Show SRE", value=True)
+                if show_sre:
+                    sre_decimals = st.number_input("Decimal places for SRE", min_value=1, max_value=10, value=1, key="sre_decimals")
+
+                x_label = st.text_input("X-axis label:", x_label_default)
+
+            with col2:
+                show_mre = st.checkbox("Show MRE", value=True)
+                if show_mre:
+                    mre_decimals = st.number_input("Decimal places for MRE", min_value=1, max_value=10, value=1, key="mre_decimals")
+
+                y_label = st.text_input("Y-axis label:", y_label_default)
+
+            title = st.text_input("Plot title:", title_default)
+
+        with st.expander("Size", expanded=False):
+            width = st.slider("Plot width (cm)", min_value=3, max_value=24, value=14)
+            height = st.slider("Plot height (cm)", min_value=3, max_value=24, value=12)
+
+        with st.expander("Colors and Shapes", expanded=False):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                point_color = st.color_picker("Pick a color for points", "#1f77b4")
+                line_color = st.color_picker("Pick a color for the line", "#ff7f0e")
+
+            with col2:
+                markers = {
+                    'Circle': 'circle',
+                    'Square': 'square',
+                    'Diamond': 'diamond',
+                    'Up Triangle': 'triangle-up',
+                    'Down Triangle': 'triangle-down',
+                    'Left Triangle': 'triangle-left',
+                    'Right Triangle': 'triangle-right',
+                    'Pentagon': 'pentagon',
+                    'Hexagon': 'hexagon'
+                }
+
+                marker_labels = list(markers.keys())
+                marker_display = ["● Circle", "■ Square", "◆ Diamond", "▲ Up Triangle", "▼ Down Triangle", "◀ Left Triangle", "▶ Right Triangle", "⬟ Pentagon", "⬢ Hexagon"]
+                selected_marker_label = st.selectbox("Select marker style for points", marker_display)
+                selected_marker = markers[marker_labels[marker_display.index(selected_marker_label)]]
+
+                line_styles = {
+                    'Solid': 'solid',
+                    'Dashed': 'dash',
+                    'Dash-dot': 'dashdot',
+                    'Dotted': 'dot'
+                }
+
+                line_style_labels = list(line_styles.keys())
+                line_style_display = ["Solid", "Dashed", "Dash-dot", "Dotted"]
+                selected_line_style_label = st.selectbox("Select line style", line_style_display)
+                selected_line_style = line_styles[selected_line_style_label]
+
+        fig = px.scatter(x=df['x'], y=relative_error, labels={'x': x_label, 'y': y_label}, title=title)
+        fig.update_traces(marker=dict(color=point_color, symbol=selected_marker))
+        fig.add_shape(type='line', x0=df['x'].min(), y0=0, x1=df['x'].max(), y1=0, line=dict(color='black', dash='dash'))
+        
+        mean_relative_errors = df.groupby('x')['relative_error'].mean().reset_index()
+        mean_relative_errors = mean_relative_errors.sort_values('x')
+        fig.add_trace(go.Scatter(x=mean_relative_errors['x'], y=mean_relative_errors['relative_error'], mode='lines', name='Mean Relative Error', line=dict(color=line_color, dash=selected_line_style)))
+
+        if show_sre or show_mre:
+            annotation_text = ""
+            if show_sre:
+                annotation_text += f"SRE = {sre:.{sre_decimals}f}%<br>"
+            if show_mre:
+                annotation_text += f"MRE = {mre:.{mre_decimals}f}%"
+            
+            # Add annotation in the lower right corner with padding
+            fig.add_annotation(
+                x=0.95, y=0.1, showarrow=False, text=annotation_text, xref="paper", yref="paper", 
+                xanchor="right", yanchor="bottom", align="right", bgcolor="white", font=dict(color='black')
+            )
+
+        fig.update_layout(showlegend=False)  # Remove the legend
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("Conclusion")
+        
+        if abs(pearson_corr) >= 0.30 or abs(spearman_corr) >= 0.30 or p_value <= 0.05:
+            st.markdown("""
+            <div style='background-color: #FFCCCB; padding: 10px; border-radius: 5px;'>
+            It seems that the precision in the lower range of the calibration is negatively affected. The improved calibration is strongly recommended!
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style='background-color: #90EE90; padding: 10px; border-radius: 5px;'>
+            There is no indication that the precision in the lower range of the calibration is negatively affected.
+            However, it is still recommended to try the improved calibration to further enhance the overall performance of the calibration.
+            </div>
+            """, unsafe_allow_html=True)
+
+    else:
+        st.error("No data or model available. Please import data first.")
 
 def render_basic_calibration():
     if st.session_state.get('data_imported'):
@@ -554,9 +755,9 @@ def render_basic_calibration():
             bc_section = st.sidebar.radio(
                 "",
                 ["Import Data", "View Data", "Calibration Plot", "Calibration Metrics", 
-                "Model Assumptions"],
+                "Model Assumptions", "Relative Errors"],
                 index=["Import Data", "View Data", "Calibration Plot", "Calibration Metrics", 
-                       "Model Assumptions"].index(st.session_state.get('current_section', "Import Data"))
+                       "Model Assumptions", "Relative Errors"].index(st.session_state.get('current_section', "Import Data"))
             )
         else:
             bc_section = st.sidebar.radio(
@@ -584,6 +785,9 @@ def render_basic_calibration():
 
     elif bc_section == "Model Assumptions":
         bc_model_assumptions()
+    
+    elif bc_section == "Relative Errors":
+        bc_relative_errors()
 
 ###############################################################
 # Function to render improved calibration page
