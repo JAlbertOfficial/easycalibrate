@@ -360,7 +360,7 @@ def bc_calibration_metrics():
     if 'model' in st.session_state:
         model = st.session_state['model']
         
-        with st.expander("Calibration Coefficients"):
+        with st.expander("Calibration Coefficients", expanded=True):
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("Slope of the fitted regression line:")
@@ -373,7 +373,7 @@ def bc_calibration_metrics():
             with col2:
                 st.write(model.intercept_)
         
-        with st.expander("Goodness of Fit"):
+        with st.expander("Goodness of Fit", expanded=True):
             y = st.session_state['df']['y']
             y_pred = st.session_state['y_pred']
             n = len(y)
@@ -400,7 +400,7 @@ def bc_calibration_metrics():
             with col2:
                 st.write(rmse)
         
-        with st.expander("Sensitivity - LOD and LOQ"):
+        with st.expander("Sensitivity - LOD and LOQ", expanded=True):
             st.markdown("""
                 According to the International Conference on Harmonization (ICH) guidelines, the limit of detection (LOD) 
                 is determined using the relation <b>LOD = 3.3 * (σ/S)</b> where <b>σ</b> is the standard deviation 
@@ -460,6 +460,7 @@ def bc_calibration_metrics():
     else:
         st.error("No model available. Please import data first.")
 
+
 def bc_model_assumptions():
     st.header("Model Assumptions")
     
@@ -499,7 +500,7 @@ def bc_model_assumptions():
 
         st.subheader("Diagnostic Plots")
 
-        with st.expander("Residual Plot", expanded=False):
+        with st.expander("Customize Residual Plot", expanded=False):
             st.markdown("**Labels**")
             x_label_default = st.session_state['x_label']
             y_label_default = "Residuals"
@@ -595,7 +596,7 @@ def bc_model_assumptions():
         fig_resid.update_layout(showlegend=False)
         st.plotly_chart(fig_resid, use_container_width=True)
 
-        with st.expander("Q-Q Plot of Residuals", expanded=False):
+        with st.expander("Customize Q-Q Plot", expanded=False):
             st.markdown("**Labels**")
             x_label_default = "Theoretical Quantiles"
             y_label_default = "Sample Quantiles"
