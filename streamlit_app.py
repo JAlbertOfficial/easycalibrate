@@ -119,7 +119,6 @@ def bc_import_data():
 
                 st.success("Data imported successfully.")
                 st.session_state['data_imported'] = True
-                st.session_state['current_section'] = "View Data"
                 st.experimental_rerun()
             else:
                 st.error("The number of x-values must be equal to the number of corresponding y-values.")
@@ -159,12 +158,19 @@ def bc_import_data():
 
                             st.success("Data imported successfully.")
                             st.session_state['data_imported'] = True
-                            st.session_state['current_section'] = "View Data"
                             st.experimental_rerun()
 
                 except Exception as e:
                     st.error(f"Error: {e}")
 
+    # Display the imported data if it exists
+    if 'df' in st.session_state:
+        st.subheader("Check Imported Data")
+        display_df = st.session_state['df'].rename(columns={'x': st.session_state['x_label'], 'y': st.session_state['y_label']})
+        st.dataframe(display_df[[st.session_state['x_label'], st.session_state['y_label']]])
+        st.write("")  # empty line for spacing
+        if st.button("Fit calibration model"):
+            bc_train_model()
 
 def bc_train_model():
     st.subheader("Train Calibration Model")
@@ -185,15 +191,6 @@ def bc_train_model():
         st.session_state['current_section'] = "Calibration Plot"
         st.experimental_rerun()
 
-def bc_raw_data():
-    st.subheader("Calibration Data")
-    if 'df' in st.session_state:
-        st.dataframe(st.session_state['df'])
-        st.write("")  # empty line for spacing
-        if st.button("Fit calibration model"):
-            bc_train_model()
-    else:
-        st.error("No data available. Please import data first.")
 
 def bc_calibration_plot():
     st.subheader("Customize Calibration Plot")
@@ -927,16 +924,14 @@ def render_basic_calibration():
         if st.session_state.get('model_trained'):
             bc_section = st.sidebar.radio(
                 "",
-                ["Import Data", "View Data", "Calibration Plot", "Calibration Metrics", 
-                "Model Assumptions", "Relative Errors"],
-                index=["Import Data", "View Data", "Calibration Plot", "Calibration Metrics", 
-                       "Model Assumptions", "Relative Errors"].index(st.session_state.get('current_section', "Import Data"))
+                ["Import Data", "Calibration Plot", "Calibration Metrics", "Model Assumptions", "Relative Errors"],
+                index=["Import Data", "Calibration Plot", "Calibration Metrics", "Model Assumptions", "Relative Errors"].index(st.session_state.get('current_section', "Import Data"))
             )
         else:
             bc_section = st.sidebar.radio(
                 "Navigate Basic Calibration",
-                ["Import Data", "View Data"],
-                index=["Import Data", "View Data"].index(st.session_state.get('current_section', "Import Data"))
+                ["Import Data"],
+                index=["Import Data"].index(st.session_state.get('current_section', "Import Data"))
             )
     else:
         bc_section = st.sidebar.radio(
@@ -947,19 +942,16 @@ def render_basic_calibration():
     if bc_section == "Import Data":
         bc_import_data()
 
-    elif bc_section == "View Data":
-        bc_raw_data()
-
-    elif bc_section == "Calibration Plot":
+    elif bc_section == "Calibration Plot" and st.session_state.get('model_trained'):
         bc_calibration_plot()
 
-    elif bc_section == "Calibration Metrics":
+    elif bc_section == "Calibration Metrics" and st.session_state.get('model_trained'):
         bc_calibration_metrics()
 
-    elif bc_section == "Model Assumptions":
+    elif bc_section == "Model Assumptions" and st.session_state.get('model_trained'):
         bc_model_assumptions()
-    
-    elif bc_section == "Relative Errors":
+
+    elif bc_section == "Relative Errors" and st.session_state.get('model_trained'):
         bc_relative_errors()
 
 ###############################################################
