@@ -35,6 +35,16 @@ import plotly.graph_objects as go
 from scipy.stats import pearsonr, spearmanr, ttest_ind
 import statsmodels.api as sm
 
+# Inject custom CSS for red buttons
+st.markdown("""
+    <style>
+    .stButton button {
+        background-color: red !important;
+        color: white !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 ###############################################################
 # Define page titles
 ###############################################################
@@ -154,6 +164,7 @@ def bc_import_data():
 
                 except Exception as e:
                     st.error(f"Error: {e}")
+
 
 def bc_train_model():
     st.subheader("Train Calibration Model")
