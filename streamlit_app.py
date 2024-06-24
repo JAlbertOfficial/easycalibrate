@@ -45,6 +45,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+
 ###############################################################
 # Define page titles
 ###############################################################
@@ -192,7 +193,7 @@ def bc_train_model():
         st.experimental_rerun()
 
 
-def bc_calibration_plot():
+
     st.subheader("Customize Calibration Plot")
     if 'df' in st.session_state and 'model' in st.session_state:
         df = st.session_state['df']
@@ -303,7 +304,6 @@ def bc_calibration_plot():
     else:
         st.error("No data or model available. Please import data first.")
 
-
 def lsqfity(X, Y):
     """
     Calculate a "MODEL-1" least squares fit.
@@ -364,11 +364,14 @@ def calculate_lod_loq(sigma, slope):
     loq = 10 * sigma / slope
     return lod, loq
 
-def bc_calibration_metrics():
-    if 'model' in st.session_state:
+def bc_basic_calibration_model():
+    st.header("Basic Calibration Model")
+
+    if 'df' in st.session_state and 'model' in st.session_state:
         model = st.session_state['model']
         
-        with st.expander("Calibration Coefficients", expanded=True):
+        st.subheader("Calibration Model Coefficients")
+        with st.expander("Slope and Intercept", expanded=True):
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("Slope of the fitted regression line:")
@@ -380,7 +383,110 @@ def bc_calibration_metrics():
                 st.markdown("Intercept of the fitted regression line:")
             with col2:
                 st.write(model.intercept_)
-        
+
+        st.subheader("Calibration Plot")
+
+        df = st.session_state['df']
+        y_pred = st.session_state['y_pred']
+        x_label_default = st.session_state['x_label']
+        y_label_default = st.session_state['y_label']
+
+        with st.expander("Labels", expanded=False):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                show_r_squared = st.checkbox("Show adjusted R-squared", value=True)
+                if show_r_squared:
+                    r_squared_decimals = st.number_input("Decimal places for R-squared", min_value=1, max_value=10, value=3, key="r2_decimals")
+
+                x_label = st.text_input("X-axis label:", x_label_default)
+
+            with col2:
+                show_equation = st.checkbox("Show calibration equation", value=True)
+                if show_equation:
+                    equation_decimals = st.number_input("Decimal places for equation", min_value=1, max_value=10, value=3, key="eq_decimals")
+
+                y_label = st.text_input("Y-axis label:", y_label_default)
+
+            title = st.text_input("Plot title:", "Calibration Plot")
+
+        with st.expander("Size", expanded=False):
+            width = st.slider("Plot width (cm)", min_value=3, max_value=24, value=14)
+            height = st.slider("Plot height (cm)", min_value=3, max_value=24, value=12)
+
+        with st.expander("Colors and Shapes", expanded=False):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                point_color = st.color_picker("Pick a color for points", "#1f77b4")
+                line_color = st.color_picker("Pick a color for the line", "#ff7f0e")
+
+            with col2:
+                markers = {
+                    'Circle': 'o',
+                    'Square': 's',
+                    'Diamond': 'D',
+                    'Up Triangle': '^',
+                    'Down Triangle': 'v',
+                    'Left Triangle': '<',
+                    'Right Triangle': '>',
+                    'Pentagon': 'p',
+                    'Hexagon': 'h'
+                }
+
+                marker_labels = list(markers.keys())
+                marker_display = ["● Circle", "■ Square", "◆ Diamond", "▲ Up Triangle", "▼ Down Triangle", "◀ Left Triangle", "▶ Right Triangle", "⬟ Pentagon", "⬢ Hexagon"]
+                selected_marker_label = st.selectbox("Select marker style for points", marker_display)
+                selected_marker = markers[marker_labels[marker_display.index(selected_marker_label)]]
+
+                line_styles = {
+                    'Solid': '-',
+                    'Dashed': '--',
+                    'Dash-dot': '-.',
+                    'Dotted': ':'
+                }
+
+                line_style_labels = list(line_styles.keys())
+                line_style_display = ["Solid", "Dashed", "Dash-dot", "Dotted"]
+                selected_line_style_label = st.selectbox("Select line style", line_style_display)
+                selected_line_style = line_styles[selected_line_style_label]
+
+        # Berechnung des Konfidenzintervalls
+        X = df[['x']].values
+        se = np.sqrt(np.sum((y_pred - df['y'])**2) / (len(df) - 2))
+        t_val = stats.t.ppf(1 - 0.025, df=len(df) - 2)
+        ci = t_val * se * np.sqrt(1 / len(df) + (X - np.mean(X))**2 / np.sum((X - np.mean(X))**2))
+        ci = ci.flatten()  # Sicherstellen, dass ci 1-dimensional ist
+
+        # Plot erstellen
+        fig, ax = plt.subplots(figsize=(width / 2.54, height / 2.54))  # Konvertieren von cm zu Zoll
+        ax.plot(df['x'], df['y'], marker=selected_marker, linestyle='None', color=point_color)  # Datenpunkte
+        ax.plot(df['x'], y_pred, linestyle=selected_line_style, color=line_color)  # Regressionslinie
+        ax.fill_between(df['x'], y_pred - ci, y_pred + ci, color=line_color, alpha=0.1)  # Konfidenzintervall
+
+        # Achsenbeschriftungen
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_title(title)
+
+        # Berechnung des adjustierten R-Quadrats
+        n = len(df)
+        p = 1  # Anzahl der Prädiktoren
+        r_squared = model.score(X, df['y'])
+        adjusted_r_squared = 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
+
+        # Anzeige der Kalibriergleichung und des adjustierten R-Quadrats basierend auf Benutzeroptionen
+        equation_text = ""
+        if show_r_squared:
+            equation_text += f"adj. R² = {adjusted_r_squared:.{r_squared_decimals}f}\n"
+        if show_equation:
+            equation_text += f"y = {model.coef_[0]:.{equation_decimals}f} * x + {model.intercept_:.{equation_decimals}f}"
+
+        if equation_text:
+            ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
+
+        st.pyplot(fig)
+
         with st.expander("Goodness of Fit", expanded=True):
             y = st.session_state['df']['y']
             y_pred = st.session_state['y_pred']
@@ -407,8 +513,10 @@ def bc_calibration_metrics():
                 st.markdown("Root Mean Squared Error (RMSE):")
             with col2:
                 st.write(rmse)
-        
-        with st.expander("Sensitivity - LOD and LOQ", expanded=True):
+
+        st.subheader("Sensitivity")
+
+        with st.expander("LOD and LOQ", expanded=True):
             st.markdown("""
                 According to the International Conference on Harmonization (ICH) guidelines, the limit of detection (LOD) 
                 is determined using the relation <b>LOD = 3.3 * (σ/S)</b> where <b>σ</b> is the standard deviation 
@@ -465,8 +573,21 @@ def bc_calibration_metrics():
                     st.markdown("Limit of Quantification (LOQ):")
                 with col2:
                     st.write(loq)
+                
+                st.subheader("Conclusion")
+                st.write("""
+                    Calibration models are also linear regression models and they need to meet certain assumptions 
+                    to ensure that the calibration line performs equally well across the entire calibration range.
+                    Therefore, within the scope of model diagnostics, it is necessary to check for homoscedasticity,
+                    normality, and the distribution of relative errors.
+                """)
+                
+                if st.button("Proceed with Model Diagnostics"):
+                    st.session_state['current_section'] = "Model Assumptions"
+                    st.experimental_rerun()
+
     else:
-        st.error("No model available. Please import data first.")
+        st.error("No data or model available. Please import data first.")
 
 
 def bc_model_assumptions():
@@ -726,7 +847,6 @@ def bc_model_assumptions():
     else:
         st.error("No data or model available. Please import data first.")
 
-
 def bc_relative_errors():
     st.header("Relative Errors")
     
@@ -922,10 +1042,14 @@ def bc_relative_errors():
 def render_basic_calibration():
     if st.session_state.get('data_imported'):
         if st.session_state.get('model_trained'):
+            # Aktualisiere den `current_section`-Wert, falls er auf eine alte Seite verweist
+            if st.session_state.get('current_section') in ["Calibration Plot", "Calibration Metrics"]:
+                st.session_state['current_section'] = "Basic Calibration Model"
+
             bc_section = st.sidebar.radio(
                 "",
-                ["Import Data", "Calibration Plot", "Calibration Metrics", "Model Assumptions", "Relative Errors"],
-                index=["Import Data", "Calibration Plot", "Calibration Metrics", "Model Assumptions", "Relative Errors"].index(st.session_state.get('current_section', "Import Data"))
+                ["Import Data", "Basic Calibration Model", "Model Assumptions", "Relative Errors"],
+                index=["Import Data", "Basic Calibration Model", "Model Assumptions", "Relative Errors"].index(st.session_state.get('current_section', "Import Data"))
             )
         else:
             bc_section = st.sidebar.radio(
@@ -942,11 +1066,8 @@ def render_basic_calibration():
     if bc_section == "Import Data":
         bc_import_data()
 
-    elif bc_section == "Calibration Plot" and st.session_state.get('model_trained'):
-        bc_calibration_plot()
-
-    elif bc_section == "Calibration Metrics" and st.session_state.get('model_trained'):
-        bc_calibration_metrics()
+    elif bc_section == "Basic Calibration Model" and st.session_state.get('model_trained'):
+        bc_basic_calibration_model()
 
     elif bc_section == "Model Assumptions" and st.session_state.get('model_trained'):
         bc_model_assumptions()
